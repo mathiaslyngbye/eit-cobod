@@ -1,3 +1,0 @@
-/home/mal/Documents/eit-cobod/CMakeFiles/rebuild_cache.dir
-/home/mal/Documents/eit-cobod/CMakeFiles/ur_rtde_cmake_example.dir
-/home/mal/Documents/eit-cobod/CMakeFiles/edit_cache.dir
