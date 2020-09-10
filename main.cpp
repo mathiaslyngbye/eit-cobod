@@ -13,15 +13,17 @@ int main(int argc, char* argv[])
   double blend_3 = 0.0;
   std::vector<double> path_pose1 = {-0.143, -0.435, 0.20, -0.001, 3.12, 0.04, velocity, acceleration, blend_1};
   std::vector<double> path_pose2 = {-0.143, -0.51, 0.21, -0.001, 3.12, 0.04, velocity, acceleration, blend_2};
-  std::vector<double> path_pose3 = {-0.32, -0.61, 0.31, -0.001, 3.12, 0.04, velocity, acceleration, blend_3};
+  std::vector<double> path_pose3 = {-0.32, -0.61, 0.31, -0.001, 3.12, 0.04, velocity, acceleration, blend_2};
+  std::vector<double> path_pose4 = {0, -1.505, 0, -1.505, 0, 0, velocity, acceleration, blend_3};
 
   std::vector<std::vector<double>> path;
   path.push_back(path_pose1);
   path.push_back(path_pose2);
   path.push_back(path_pose3);
+  path.push_back(path_pose4);
 
   // Send a linear path with blending in between - (currently uses separate script)
-  rtde_control.moveL(path);
+  rtde_control.moveJ(path);
   rtde_control.stopScript();
 
   return 0;
