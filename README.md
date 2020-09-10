@@ -20,4 +20,4 @@ sudo apt install librtde librtde-dev
    * IPv4 Method: Manual
    * Addresses: Address NOT the same subnet as robot (i.e. if robot is 192.168.0.212, your PC may be 192.168.0.250). Netmask matching the robot.
    * DNS: Matching robot; likely 0.0.0.0.
-
+3. When done configuring, if it doesn't work - restart your wired connection.
