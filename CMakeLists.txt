@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(eit-cobod)
-
+find_package(Boost COMPONENTS system filesystem regex date_time thread chrono REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
 find_package(ur_rtde REQUIRED)
 add_executable(eit-cobod main.cpp)
 target_link_libraries(eit-cobod PRIVATE ur_rtde::rtde)
