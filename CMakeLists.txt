@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(eit-cobod)
+set(CMAKE_CXX_STANDARD 11)
 find_package(Boost COMPONENTS system filesystem regex date_time thread chrono REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 find_package(ur_rtde REQUIRED)
