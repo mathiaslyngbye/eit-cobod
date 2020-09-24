@@ -14,6 +14,27 @@ sudo apt-get update
 sudo apt install librtde librtde-dev
 ```
 
+### RobWork (And colliding packages)
+Add sdurobotics/robwork to apt ppa repositories.
+```bash
+sudo add-apt-repository ppa:sdurobotics/robwork
+sudo apt-get update
+```
+Install packages with 
+```bash
+sudo apt install libsdurw-all-dev
+sudo apt install libsdurws-all-dev
+sudo apt install libsdurwhw-all-dev
+sudo apt install libsdurwsim-all-dev
+```
+
+If these packages collide with URRTDE, the installation fails.
+Overwrite colliding packages by
+``` bash
+sudo dpkg -i --force-overwrite /var/cache/apt/archives/sdurwhw-cmake1.1_1.1.11-2_amd64.deb
+sudo dpkg -i --force-overwrite /var/cache/apt/archives/libsdurwhw-universalrobots-rtde1.1_1.1.11-2_amd64.deb
+```
+
 ### Configure network
 1. Read robot IP and DNS from tablet interface. 
 2. Configure the wired IPv4 connection:
