@@ -30,6 +30,6 @@ include_directories(${Boost_INCLUDE_DIRS})
 #Include ur_rtde
 #find_package(ur_rtde REQUIRED)
 
-add_executable(eit-cobod main.cpp)
+add_executable(eit-cobod main.cpp ur_control.cpp)
 #target_link_libraries(eit-cobod PRIVATE ur_rtde::rtde)
 target_link_libraries(eit-cobod ${ROBWORK_LIBRARIES} ${ROBWORKHARDWARE_LIBRARIES})
