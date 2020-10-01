@@ -1,6 +1,7 @@
 #include <ur_rtde/rtde_control_interface.h>
 #include <ur_rtde/rtde_io_interface.h>
 #include <ur_rtde/rtde_receive_interface.h>
+#include <ur_rtde/rtde_receive_interface.h>
 #include <thread>
 #include <iostream>
 #include <chrono>
@@ -118,9 +119,10 @@ void control(std::string robot_ip)
 {
     ur_rtde::RTDEControlInterface rtde_control(robot_ip);
     ur_rtde::RTDEReceiveInterface rtde_receive(robot_ip);
+    ur_rtde::RTDEIOInterface rtde_io(robot_ip);
 
-    double velocity = 0.2;
-    double acceleration = 0.5;
+    double velocity = 0.4;
+    double acceleration = 0.4;
     double blend_2 = 0.02;
 
     std::vector<double> path_pose1 = {-0.2, -0.5, 0.2, -0.001, 3.12, 0.04, velocity, acceleration, blend_2};
@@ -129,12 +131,21 @@ void control(std::string robot_ip)
     std::vector<std::vector<double>> path;
     for(int i = 0; i < 1; i++)
     {
-        path.push_back(path_pose1);
         path.push_back(path_pose2);
+        //path.push_back(path_pose2);
     }
 
     // Send a linear path with blending in between - (currently uses separate script)
     rtde_control.moveL(path);
+    rtde_io.setStandardDigitalOut(0, true);
+    path.clear();
+    path.push_back(path_pose1);
+    rtde_control.moveL(path);
+    rtde_io.setStandardDigitalOut(0, false);
+    path.clear();
+    path.push_back(path_pose2);
+    rtde_control.moveL(path);
+    rtde_io.setStandardDigitalOut(0, true);
     rtde_control.stopScript();
 
     std::vector<double> joint_positions = rtde_receive.getActualQ();
