@@ -9,16 +9,16 @@
 	</Frame>
 
     <Frame name="URReference" refframe="Table" type="Movable">
-        <RPY>0 0 0</RPY> <Pos>-0.275 0 0.1</Pos>
+        <RPY>117.5 0 0</RPY> <Pos>-0.275 0 0.19</Pos>
     </Frame>
     <Include file="devices/UR-6-85-5-A/Device.wc.xml" />
     
-    
+    <!--
     <Frame name="Gripper" refframe="UR-6-85-5-A.TCP" type="Fixed">
         <RPY>0 0 0</RPY> <Pos>0 0 0.072</Pos>
     </Frame>
     <Include file="devices/wsg50/wsg50.xml" />
-    
+    -->
     
     <Frame name="GraspTCP" refframe="UR-6-85-5-A.TCP" type="Fixed">
         <RPY>0 0 0</RPY> <Pos>0 0 0.15</Pos>
