@@ -35,6 +35,11 @@ sudo dpkg -i --force-overwrite /var/cache/apt/archives/sdurwhw-cmake1.1_1.1.11-2
 sudo dpkg -i --force-overwrite /var/cache/apt/archives/libsdurwhw-universalrobots-rtde1.1_1.1.11-2_amd64.deb
 ```
 
+Compiling projects with robwork may need the 'libassimp' package, install it with:
+```bash
+sudo apt install libassimp-dev
+```
+
 ### Configure network
 1. Read robot IP and DNS from tablet interface. 
 2. Configure the wired IPv4 connection:
