@@ -26,6 +26,10 @@ Plugin::Plugin():
     pLayout->addWidget(_btn3, row++, 0);
     connect(_btn3, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
+    _btn4 = new QPushButton("Stop robot");
+    pLayout->addWidget(_btn4, row++, 0);
+    connect(_btn4, SIGNAL(clicked()), this, SLOT(clickEvent()));
+
     pLayout->setRowStretch(row,1);
 }
 
@@ -67,13 +71,15 @@ void Plugin::clickEvent()
     QObject *obj = sender();
 
     if(obj == _btn0)
-        connectUR();
+        connectRobot();
     else if(obj == _btn1)
         homeRobot();
     else if(obj == _btn2)
         startRobotMimic();
     else if(obj == _btn3)
         startRobotControl();
+    else if(obj == _btn4)
+        stopRobot();
 }
 
 void Plugin::stateChangedListener(const rw::kinematics::State& state)
@@ -83,7 +89,7 @@ void Plugin::stateChangedListener(const rw::kinematics::State& state)
 
 void Plugin::RunRobotControl()
 {
-    if(!ur_robot_connected)
+    if(!ur_robot_exists)
     {
         std::cout << "Robot not connected..." << std::endl;
         return;
@@ -101,7 +107,8 @@ void Plugin::RunRobotControl()
 
     rw::trajectory::Transform3DPath lpath;
 
-    while(true)
+    ur_robot_stopped = false;
+    while(!ur_robot_stopped)
     {
         // Open and move down
         lpath.clear();
@@ -121,7 +128,7 @@ void Plugin::RunRobotControl()
 
 void Plugin::RunRobotMimic()
 {
-    if(!ur_robot_connected)
+    if(!ur_robot_exists)
     {
         std::cout << "Robot not connected..." << std::endl;
         return;
@@ -136,13 +143,13 @@ void Plugin::RunRobotMimic()
     }
 }
 
-void Plugin::connectUR()
+void Plugin::connectRobot()
 {
     std::cout << "Connecting to " << ur_robot_ip << "..." << std::endl;
-    if(!ur_robot_connected)
+    if(ur_robot_exists)
     {
         ur_robot = new rwhw::URRTDE(ur_robot_ip);
-        ur_robot_connected = true;
+        ur_robot_exists = true;
         std::cout << "Connected!" << std::endl;
     }
     else
@@ -151,6 +158,9 @@ void Plugin::connectUR()
 
 void Plugin::homeRobot()
 {
+    std::cout << "Setting RWS robot home Q:" << std::endl;
+    //std::cout << "> From:\t" << rws_robot->getQ(rws_state) << std::endl;
+    std::cout << "> To:\t" << home << std::endl;
     rws_robot->setQ(home,rws_state);
     getRobWorkStudio()->setState(rws_state);
 }
@@ -167,4 +177,10 @@ void Plugin::startRobotControl()
     if(control_thread.joinable())
         control_thread.join();
     control_thread = std::thread(&Plugin::RunRobotControl, this);
+}
+
+void Plugin::stopRobot()
+{
+    std::cout << "Stopping robot..." << std::endl;
+    ur_robot_stopped = true;
 }

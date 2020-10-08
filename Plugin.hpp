@@ -55,19 +55,23 @@ private slots:
     void startRobotMimic();
     void startRobotControl();
     void homeRobot();
-    void connectUR();
+    void connectRobot();
+    void stopRobot();
 
 private:
     rw::proximity::CollisionDetector::Ptr collisionDetector;
     rw::models::WorkCell::Ptr rws_wc;
     rw::kinematics::State rws_state;
     rw::models::Device::Ptr rws_robot;
-    QPushButton *_btn0,*_btn1,*_btn2,*_btn3;
+    QPushButton *_btn0,*_btn1,*_btn2,*_btn3,*_btn4;
     rw::math::Q home = rw::math::Q(6, 0, 0, 0, 0, 0, 0);
 
     std::string ur_robot_ip = "192.168.0.212";
     rwhw::URRTDE *ur_robot;
-    bool ur_robot_connected = false;
+    bool ur_robot_exists = false;
+
+    // Flags
+    std::atomic_bool ur_robot_stopped;
 
     // Threads
     std::thread control_thread;
