@@ -6,6 +6,9 @@
 #include <rwhw/universalrobots/UniversalRobotsData.hpp>
 #include <rwhw/universalrobots_rtde/URRTDE.hpp>
 
+// RobWork includes
+#include <RobWorkStudio.hpp>
+
 // Include standards
 #include <thread>
 #include <iostream>

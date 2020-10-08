@@ -52,3 +52,4 @@ void RunStop(rwhw::URRTDE *robot)
         stopped = true;
     }
 }
+

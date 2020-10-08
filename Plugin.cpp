@@ -9,6 +9,10 @@
 
 // standard includes
 #include <boost/bind.hpp>
+#include <iostream>
+
+// Others
+#include "ur_control.hpp"
 
 Plugin::Plugin():
     rws::RobWorkStudioPlugin("Plugin", QIcon(":/plugin.png"))
@@ -31,6 +35,10 @@ Plugin::Plugin():
     _btn2 = new QPushButton("Home robot");
     pLayout->addWidget(_btn2, row++, 0);
     connect(_btn2, SIGNAL(clicked()), this, SLOT(clickEvent()));
+
+    _btn3 = new QPushButton("Main");
+    pLayout->addWidget(_btn3, row++, 0);
+    connect(_btn3, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
     pLayout->setRowStretch(row,1);
 }
@@ -92,6 +100,12 @@ void Plugin::clickEvent()
         buttonDemoEvent("Home robot");
         homeRobotEvent();
     }
+    else if(obj == _btn3)
+    {
+        log().info() << "Button 3 pressed!\n";
+        buttonDemoEvent("Main");
+        mainEvent();
+    }
 }
 
 void Plugin::stateChangedListener(const rw::kinematics::State& state)
@@ -108,4 +122,30 @@ void Plugin::homeRobotEvent()
 {
     robot->setQ(home,rws_state);
     getRobWorkStudio()->setState(rws_state);
+}
+
+void Plugin::RunUpdateRobot(rwhw::URRTDE *ur_robot)
+{
+    while(true)
+    {
+        rw::math::Q currentQ = ur_robot->getActualQ();
+        robot->setQ(currentQ,rws_state);
+        getRobWorkStudio()->setState(rws_state);
+    }
+}
+
+void Plugin::mainEvent()
+{
+    // Move robot
+    const static std::string robot_ip = "192.168.0.212";
+    rwhw::URRTDE ur_robot(robot_ip);
+
+    boost::thread controlth(RunControl, &ur_robot);
+    boost::thread updateth(RunUpdateRobot, &ur_robot);
+    boost::thread stopth(RunStop, &ur_robot);
+
+
+    controlth.join();
+    updateth.join();
+    stopth.join();
 }

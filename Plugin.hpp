@@ -28,21 +28,23 @@ public:
     virtual void open(rw::models::WorkCell* workcell);
     virtual void close();
     virtual void initialize();
+    void mainEvent();
 
 private slots:
     void clickEvent();
     void stateChangedListener(const rw::kinematics::State& state);
     void buttonDemoEvent(std::string);
     void homeRobotEvent();
+    void RunUpdateRobot(rwhw::URRTDE *robot);
 
 private:
     rw::proximity::CollisionDetector::Ptr collisionDetector;
     rw::models::WorkCell::Ptr rws_wc;
     rw::kinematics::State rws_state;
     rw::models::Device::Ptr robot;
-    QPushButton *_btn0,*_btn1,*_btn2;
+    QPushButton *_btn0,*_btn1,*_btn2,*_btn3;
     rw::math::Q home = rw::math::Q(6, 0, 0, 0, 0, 0, 0);
-    std::string robot_ip = "192.168.0.212";
+    //std::string robot_ip = "192.168.0.212";
 };
 
 #endif /*PLUGIN_HPP*/
