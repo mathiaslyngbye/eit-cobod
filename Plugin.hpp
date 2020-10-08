@@ -7,6 +7,10 @@
 // RobWorkStudio includes
 #include <rws/RobWorkStudioPlugin.hpp>
 
+// Include robworkhardware
+#include <rwhw/universalrobots/UniversalRobotsData.hpp>
+#include <rwhw/universalrobots_rtde/URRTDE.hpp>
+
 // RobWork library includes
 #include <rwlibs/proximitystrategies/ProximityStrategyFactory.hpp>
 

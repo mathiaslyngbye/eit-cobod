@@ -1,8 +1,3 @@
-# Include robworkhardware
-#FIND_PACKAGE(RobWorkHardware REQUIRED universalrobots_rtde)
-#link_directories( ${ROBWORKHARDWARE_LIBRARY_DIRS})
-#include_directories( ${ROBWORKHARDWARE_INCLUDE_DIRS})
-
 # Test CMake version
 cmake_minimum_required(VERSION 3.5)
 
@@ -37,6 +32,12 @@ set(RobWorkStudio_DIR ${RWSTUDIO_ROOT}/cmake)
 find_package(RobWorkStudio REQUIRED)
 message("-- RobWorkStudio found: " ${RWSTUDIO_ROOT})
 
+# Include robworkhardware
+FIND_PACKAGE(RobWorkHardware REQUIRED universalrobots_rtde)
+link_directories( ${ROBWORKHARDWARE_LIBRARY_DIRS})
+include_directories( ${ROBWORKHARDWARE_INCLUDE_DIRS})
+
+
 # Set the output dir for generated libraries and binaries
 if(MSVC)
         set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${ROOT}/bin" CACHE PATH "Runtime directory" FORCE)
@@ -56,8 +57,8 @@ set(SrcFiles Plugin.cpp ur_control.cpp resources.qrc)
 
 # The shared library to build:
 add_library(Plugin MODULE ${SrcFiles})
-target_link_libraries(Plugin PUBLIC ${ROBWORKSTUDIO_LIBRARIES} ${ROBWORK_LIBRARIES})
-target_include_directories(Plugin PUBLIC ${ROBWORKSTUDIO_INCLUDE_DIRS} ${ROBWORK_INCLUDE_DIRS})
+target_link_libraries(Plugin PUBLIC ${ROBWORKSTUDIO_LIBRARIES} ${ROBWORKHARDWARE_LIBRARIES} ${ROBWORK_LIBRARIES})
+target_include_directories(Plugin PUBLIC ${ROBWORKSTUDIO_INCLUDE_DIRS} ${ROBWORKHARDWARE_INCLUDE_DIRS} ${ROBWORK_INCLUDE_DIRS})
 
 message("-- " ${PROJECT_NAME} " done!")
 

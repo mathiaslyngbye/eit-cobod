@@ -43,6 +43,10 @@ Plugin::~Plugin()
 void Plugin::initialize()
 {
     getRobWorkStudio()->stateChangedEvent().add(boost::bind(&Plugin::stateChangedListener, this, boost::arg<1>()), this);
+
+    const static std::string robot_ip = "192.168.0.212";
+    rwhw::URRTDE robot(robot_ip);
+
     std::cout << "End of initialize()" << std::endl;
 }
 

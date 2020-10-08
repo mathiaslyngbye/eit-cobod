@@ -28,5 +28,4 @@ void RunControl(rwhw::URRTDE *robot);
 void RunPrintJoints(rwhw::URRTDE *robot);
 void RunStop(rwhw::URRTDE *robot);
 
-
 #endif // UR_CONTROL_HPP
