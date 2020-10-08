@@ -1,19 +1,5 @@
 #include "Plugin.hpp"
 
-// Qt includes
-#include <QPushButton>
-#include <QGridLayout>
-
-// RobWork includes
-#include <RobWorkStudio.hpp>
-
-// standard includes
-#include <boost/bind.hpp>
-#include <iostream>
-
-// Others
-#include "ur_control.hpp"
-
 Plugin::Plugin():
     rws::RobWorkStudioPlugin("Plugin", QIcon(":/plugin.png"))
 {
@@ -24,25 +10,24 @@ Plugin::Plugin():
 
     int row = 0;
 
-    _btn0 = new QPushButton("Button0");
+    _btn0 = new QPushButton("Connect");
     pLayout->addWidget(_btn0, row++, 0);
     connect(_btn0, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn1 = new QPushButton("Button1");
+    _btn1 = new QPushButton("Home rws robot");
     pLayout->addWidget(_btn1, row++, 0);
     connect(_btn1, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn2 = new QPushButton("Home robot");
+    _btn2 = new QPushButton("Start robot mimic");
     pLayout->addWidget(_btn2, row++, 0);
     connect(_btn2, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn3 = new QPushButton("Main");
+    _btn3 = new QPushButton("Start robot control");
     pLayout->addWidget(_btn3, row++, 0);
     connect(_btn3, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
     pLayout->setRowStretch(row,1);
 }
-
 
 Plugin::~Plugin()
 {
@@ -51,9 +36,6 @@ Plugin::~Plugin()
 void Plugin::initialize()
 {
     getRobWorkStudio()->stateChangedEvent().add(boost::bind(&Plugin::stateChangedListener, this, boost::arg<1>()), this);
-
-    const static std::string robot_ip = "192.168.0.212";
-    rwhw::URRTDE robot(robot_ip);
 
     std::cout << "End of initialize()" << std::endl;
 }
@@ -66,9 +48,7 @@ void Plugin::open(rw::models::WorkCell* workcell)
         // Get rws info
         rws_wc = workcell;
         rws_state = rws_wc->getDefaultState();
-
-        // Locate robot in workcell
-        robot = rws_wc->findDevice<rw::models::SerialDevice>("UR-6-85-5-A");
+        rws_robot = rws_wc->findDevice<rw::models::SerialDevice>("UR-6-85-5-A");
 
         // Use rws collision checker
         collisionDetector = rw::common::ownedPtr(new rw::proximity::CollisionDetector(rws_wc, rwlibs::proximitystrategies::ProximityStrategyFactory::makeDefaultCollisionStrategy()));
@@ -83,29 +63,17 @@ void Plugin::close()
 
 void Plugin::clickEvent()
 {
+    // log().info() << "Button 0 pressed!\n";
     QObject *obj = sender();
+
     if(obj == _btn0)
-    {
-        log().info() << "Button 0 pressed!\n";
-        buttonDemoEvent("Button 0");
-    }
+        connectUR();
     else if(obj == _btn1)
-    {
-        log().info() << "Button 1 pressed!\n";
-        buttonDemoEvent("Button 1");
-    }
+        homeRobot();
     else if(obj == _btn2)
-    {
-        log().info() << "Button 2 pressed!\n";
-        buttonDemoEvent("Home robot");
-        homeRobotEvent();
-    }
+        startRobotMimic();
     else if(obj == _btn3)
-    {
-        log().info() << "Button 3 pressed!\n";
-        buttonDemoEvent("Main");
-        mainEvent();
-    }
+        startRobotControl();
 }
 
 void Plugin::stateChangedListener(const rw::kinematics::State& state)
@@ -113,39 +81,90 @@ void Plugin::stateChangedListener(const rw::kinematics::State& state)
     log().info() << "State changed!";
 }
 
-void Plugin::buttonDemoEvent(std::string text)
+void Plugin::RunRobotControl()
 {
-    std::cout << "\"" << text << "\" pressed!" << std::endl;
+    if(!ur_robot_connected)
+    {
+        std::cout << "Robot not connected..." << std::endl;
+        return;
+    }
+
+    const rw::math::Transform3D<> pose_up = rw::math::Transform3D<>(
+            rw::math::Vector3D<>(-0.2, -0.5, 0.5),
+            rw::math::RPY<>(0, 3.12, 0)
+            );
+
+    const rw::math::Transform3D<> pose_down = rw::math::Transform3D<>(
+            rw::math::Vector3D<>(-0.2, -0.5, 0.2),
+            rw::math::RPY<>(0, 3.12, 0)
+            );
+
+    rw::trajectory::Transform3DPath lpath;
+
+    while(true)
+    {
+        // Open and move down
+        lpath.clear();
+        ur_robot->setStandardDigitalOut(0,OPEN);
+        lpath.push_back(pose_down);
+        ur_robot->moveL(lpath);
+
+        // Close and move up
+        ur_robot->setStandardDigitalOut(0,CLOSE);
+        lpath.clear();
+        lpath.push_back(pose_up);
+        ur_robot->moveL(lpath);
+    }
+
+    ur_robot->stopRobot();
 }
 
-void Plugin::homeRobotEvent()
+void Plugin::RunRobotMimic()
 {
-    robot->setQ(home,rws_state);
-    getRobWorkStudio()->setState(rws_state);
-}
+    if(!ur_robot_connected)
+    {
+        std::cout << "Robot not connected..." << std::endl;
+        return;
+    }
 
-void Plugin::RunUpdateRobot(rwhw::URRTDE *ur_robot)
-{
     while(true)
     {
         rw::math::Q currentQ = ur_robot->getActualQ();
-        robot->setQ(currentQ,rws_state);
+        rws_robot->setQ(currentQ, rws_state);
         getRobWorkStudio()->setState(rws_state);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
 
-void Plugin::mainEvent()
+void Plugin::connectUR()
 {
-    // Move robot
-    const static std::string robot_ip = "192.168.0.212";
-    rwhw::URRTDE ur_robot(robot_ip);
+    std::cout << "Connecting to " << ur_robot_ip << "..." << std::endl;
+    if(!ur_robot_connected)
+    {
+        ur_robot = new rwhw::URRTDE(ur_robot_ip);
+        ur_robot_connected = true;
+        std::cout << "Connected!" << std::endl;
+    }
+    else
+        std::cout << "Already connected..." << std::endl;
+}
 
-    boost::thread controlth(RunControl, &ur_robot);
-    boost::thread updateth(RunUpdateRobot, &ur_robot);
-    boost::thread stopth(RunStop, &ur_robot);
+void Plugin::homeRobot()
+{
+    rws_robot->setQ(home,rws_state);
+    getRobWorkStudio()->setState(rws_state);
+}
 
+void Plugin::startRobotMimic()
+{
+    if(update_thread.joinable())
+        update_thread.join();
+    update_thread = std::thread(&Plugin::RunRobotMimic, this);
+}
 
-    controlth.join();
-    updateth.join();
-    stopth.join();
+void Plugin::startRobotControl()
+{
+    if(control_thread.joinable())
+        control_thread.join();
+    control_thread = std::thread(&Plugin::RunRobotControl, this);
 }

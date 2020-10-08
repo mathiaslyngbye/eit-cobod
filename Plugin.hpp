@@ -5,14 +5,28 @@
 #include <rw/rw.hpp>
 
 // RobWorkStudio includes
+#include <RobWorkStudio.hpp>
 #include <rws/RobWorkStudioPlugin.hpp>
 
-// Include robworkhardware
+// RobWorkHardware includes
 #include <rwhw/universalrobots/UniversalRobotsData.hpp>
 #include <rwhw/universalrobots_rtde/URRTDE.hpp>
 
 // RobWork library includes
 #include <rwlibs/proximitystrategies/ProximityStrategyFactory.hpp>
+
+// Qt includes
+#include <QPushButton>
+#include <QGridLayout>
+
+// Standard includes
+#include <iostream>
+#include <thread>
+#include <utility>
+
+// Extra defines for robot gripper
+#define OPEN true
+#define CLOSE false
 
 class QPushButton;
 
@@ -28,23 +42,36 @@ public:
     virtual void open(rw::models::WorkCell* workcell);
     virtual void close();
     virtual void initialize();
-    void mainEvent();
 
 private slots:
     void clickEvent();
     void stateChangedListener(const rw::kinematics::State& state);
-    void buttonDemoEvent(std::string);
-    void homeRobotEvent();
-    void RunUpdateRobot(rwhw::URRTDE *robot);
+
+    // Threads
+    void RunRobotMimic();
+    void RunRobotControl();
+
+    // Button functions
+    void startRobotMimic();
+    void startRobotControl();
+    void homeRobot();
+    void connectUR();
 
 private:
     rw::proximity::CollisionDetector::Ptr collisionDetector;
     rw::models::WorkCell::Ptr rws_wc;
     rw::kinematics::State rws_state;
-    rw::models::Device::Ptr robot;
+    rw::models::Device::Ptr rws_robot;
     QPushButton *_btn0,*_btn1,*_btn2,*_btn3;
     rw::math::Q home = rw::math::Q(6, 0, 0, 0, 0, 0, 0);
-    //std::string robot_ip = "192.168.0.212";
+
+    std::string ur_robot_ip = "192.168.0.212";
+    rwhw::URRTDE *ur_robot;
+    bool ur_robot_connected = false;
+
+    // Threads
+    std::thread control_thread;
+    std::thread update_thread;
 };
 
 #endif /*PLUGIN_HPP*/
