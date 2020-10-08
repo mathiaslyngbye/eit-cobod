@@ -1,35 +1,63 @@
+# Include robworkhardware
+#FIND_PACKAGE(RobWorkHardware REQUIRED universalrobots_rtde)
+#link_directories( ${ROBWORKHARDWARE_LIBRARY_DIRS})
+#include_directories( ${ROBWORKHARDWARE_INCLUDE_DIRS})
+
+# Test CMake version
 cmake_minimum_required(VERSION 3.5)
-project(eit-cobod)
-set(CMAKE_CXX_STANDARD 11)
+
+# The name of the project.
+project(eit-plugin)
 
 # Used to resolve absolute path names
-SET(ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+set(ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Set build type to release
-SET(CMAKE_BUILD_TYPE Release)
-MESSAGE("-- Build type: " ${CMAKE_BUILD_TYPE})
+# Now set the RW/RWS root (edit this if necessary)
+if(DEFINED ENV{RW_ROOT} AND DEFINED ENV{RWS_ROOT})
+  file(TO_CMAKE_PATH "$ENV{RW_ROOT}" RW_ROOT)
+  file(TO_CMAKE_PATH "$ENV{RWS_ROOT}" RWSTUDIO_ROOT)
+else()
+  set(RW_ROOT "${ROOT}/../../../RobWork")
+  set(RWSTUDIO_ROOT "${ROOT}/../../../RobWorkStudio")
+endif()
 
-# Set the RobWork root (edit in .bashrc if necessary)
-#SET(RW_ROOT $ENV{RW_ROOT})
-#SET(RWHARDWARE_ROOT $ENV{RWHW_ROOT})
+# If not the -DCMAKE_BUILD_TYPE option is given when running CMake, use Release as default.
+if( NOT DEFINED CMAKE_BUILD_TYPE )
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+message("-- Build type: " ${CMAKE_BUILD_TYPE})
 
-# Include robwork
+# Include default settings for constructing a RobWork dependent project
+set(RobWork_DIR ${RW_ROOT}/cmake)
 find_package(RobWork REQUIRED)
-link_directories( ${ROBWORK_LIBRARY_DIRS} )
-include_directories( ${ROBWORK_INCLUDE_DIRS} )
+message("-- RobWork found: " ${RW_ROOT})
 
-# Include robworkhardware
-FIND_PACKAGE(RobWorkHardware REQUIRED universalrobots_rtde)
-link_directories( ${ROBWORKHARDWARE_LIBRARY_DIRS})
-include_directories( ${ROBWORKHARDWARE_INCLUDE_DIRS})
+# Include default settings for constructing a RobWorkStudio dependent project
+set(RobWorkStudio_DIR ${RWSTUDIO_ROOT}/cmake)
+find_package(RobWorkStudio REQUIRED)
+message("-- RobWorkStudio found: " ${RWSTUDIO_ROOT})
 
-# Include boost
-find_package(Boost COMPONENTS system filesystem regex date_time thread chrono REQUIRED)
-include_directories(${Boost_INCLUDE_DIRS})
+# Set the output dir for generated libraries and binaries
+if(MSVC)
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${ROOT}/bin" CACHE PATH "Runtime directory" FORCE)
+        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${ROOT}/libs" CACHE PATH "Library directory" FORCE)
+        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${ROOT}/libs" CACHE PATH "Archive directory" FORCE)
+else()
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${ROOT}/bin/${CMAKE_BUILD_TYPE}" CACHE PATH "Runtime directory" FORCE)
+        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${ROOT}/libs/${CMAKE_BUILD_TYPE}" CACHE PATH "Library directory" FORCE)
+        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${ROOT}/libs/${CMAKE_BUILD_TYPE}" CACHE PATH "Archive directory" FORCE)
+endif()
 
-#Include ur_rtde
-#find_package(ur_rtde REQUIRED)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
 
-add_executable(eit-cobod main.cpp ur_control.cpp)
-#target_link_libraries(eit-cobod PRIVATE ur_rtde::rtde)
-target_link_libraries(eit-cobod ${ROBWORK_LIBRARIES} ${ROBWORKHARDWARE_LIBRARIES})
+# Add the source files to build
+set(SrcFiles Plugin.cpp ur_control.cpp resources.qrc)
+
+# The shared library to build:
+add_library(Plugin MODULE ${SrcFiles})
+target_link_libraries(Plugin PUBLIC ${ROBWORKSTUDIO_LIBRARIES} ${ROBWORK_LIBRARIES})
+target_include_directories(Plugin PUBLIC ${ROBWORKSTUDIO_INCLUDE_DIRS} ${ROBWORK_INCLUDE_DIRS})
+
+message("-- " ${PROJECT_NAME} " done!")
+

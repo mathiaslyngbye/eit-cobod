@@ -1,6 +1,23 @@
 # EiT COBOD
 Primary practical of the 2020 EiT course.
 
+## Usage
+After compiling, the plugin will be in ``./libs/``. 
+Do not edit the ``RobWorkStudio.ini`` in the workcell directory.
+Instead, either run ``./workcell/generate_ini.sh`` to generate the init file
+with absolute path to plugin. Alternately, run ``./start.sh`` to automatically
+generate the init file, run RobWorkStudio, and load selected Workcell and 
+plugin. Make both scripts executable (``chmod +x``) as needed.
+
+### QtCreator
+In order for it to work smoothly with QtCreator, go to 
+``Project > Build & Run > Run`` and specify the following:
+
+| Setting | Argument |
+|---|---|
+| Exectuable | %{sourceDir}/start.sh |
+| Working directory | %{sourceDir} |
+
 ## Prerequisites
 
 ### Install UR RTDE library
