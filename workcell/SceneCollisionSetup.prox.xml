@@ -3,6 +3,7 @@
 	<FramePair first="Table" second="Cylinder" />
 	<FramePair first="Table" second="Square" />
 	<FramePair first="Table" second="Bottle" />
-	<FramePair first="UR-6-85-5-A.Joint5" second="WSG50RefFrame" />	
+	<FramePair first="UR-6-85-5-A.Joint5" second="WSG50RefFrame" />
+    <FramePair first="ScannerDrawable" second="UR-6-85-5-A.Joint5" />
    </Exclude>
 </CollisionSetup>

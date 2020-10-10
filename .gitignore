@@ -84,3 +84,5 @@ Thumbs.db
 
 !workcell/objects/table/*
 
+
+*.pcd
