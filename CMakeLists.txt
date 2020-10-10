@@ -8,12 +8,14 @@ project(eit-plugin)
 set(ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Now set the RW/RWS root (edit this if necessary)
-if(DEFINED ENV{RW_ROOT} AND DEFINED ENV{RWS_ROOT})
+if(DEFINED ENV{RW_ROOT} AND DEFINED ENV{RWS_ROOT} AND DEFINED ENV{RWHW_ROOT})
   file(TO_CMAKE_PATH "$ENV{RW_ROOT}" RW_ROOT)
   file(TO_CMAKE_PATH "$ENV{RWS_ROOT}" RWSTUDIO_ROOT)
+  file(TO_CMAKE_PATH "$ENV{RWHW_ROOT}" RWHardware_ROOT)
 else()
   set(RW_ROOT "${ROOT}/../../../RobWork")
   set(RWSTUDIO_ROOT "${ROOT}/../../../RobWorkStudio")
+  set(RWHardware_ROOT "${ROOT}/../../../RobWorkHardware")
 endif()
 
 # If not the -DCMAKE_BUILD_TYPE option is given when running CMake, use Release as default.
@@ -33,6 +35,7 @@ find_package(RobWorkStudio REQUIRED)
 message("-- RobWorkStudio found: " ${RWSTUDIO_ROOT})
 
 # Include robworkhardware
+set(RobWorkHardware_DIR ${RWHardware_ROOT}/cmake)
 FIND_PACKAGE(RobWorkHardware REQUIRED universalrobots_rtde)
 link_directories( ${ROBWORKHARDWARE_LIBRARY_DIRS})
 include_directories( ${ROBWORKHARDWARE_INCLUDE_DIRS})
