@@ -54,16 +54,18 @@ private slots:
     // Button functions
     void startRobotMimic();
     void startRobotControl();
+    void teachMode(bool);
     void homeRobot();
     void connectRobot();
     void stopRobot();
+    void updateState();
 
 private:
     rw::proximity::CollisionDetector::Ptr collisionDetector;
     rw::models::WorkCell::Ptr rws_wc;
     rw::kinematics::State rws_state;
     rw::models::Device::Ptr rws_robot;
-    QPushButton *_btn0,*_btn1,*_btn2,*_btn3,*_btn4;
+    QPushButton *_btn0,*_btn1,*_btn2,*_btn3,*_btn4, *_btn5, *_btn6;
     rw::math::Q home = rw::math::Q(6, 0, 0, 0, 0, 0, 0);
 
     std::string ur_robot_ip = "192.168.0.212";

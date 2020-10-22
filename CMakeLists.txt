@@ -56,7 +56,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 # Add the source files to build
-set(SrcFiles Plugin.cpp resources.qrc main.cpp)
+set(SrcFiles Plugin.cpp resources.qrc)
 
 # The shared library to build:
 add_library(Plugin MODULE ${SrcFiles})

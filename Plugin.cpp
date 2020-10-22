@@ -30,6 +30,14 @@ Plugin::Plugin():
     pLayout->addWidget(_btn4, row++, 0);
     connect(_btn4, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
+    _btn5 = new QPushButton("Start teach mode");
+    pLayout->addWidget(_btn5, row++, 0);
+    connect(_btn5, SIGNAL(clicked()), this, SLOT(clickEvent()));
+
+    _btn6 = new QPushButton("Stop teach mode");
+    pLayout->addWidget(_btn6, row++, 0);
+    connect(_btn6, SIGNAL(clicked()), this, SLOT(clickEvent()));
+
     pLayout->setRowStretch(row,1);
 }
 
@@ -80,10 +88,15 @@ void Plugin::clickEvent()
         startRobotControl();
     else if(obj == _btn4)
         stopRobot();
+    else if(obj == _btn5)
+        teachMode(true);
+    else if(obj == _btn6)
+        teachMode(false);
 }
 
 void Plugin::stateChangedListener(const rw::kinematics::State& state)
 {
+    rws_state = state;
     log().info() << "State changed!";
 }
 
@@ -126,6 +139,25 @@ void Plugin::RunRobotControl()
     ur_robot->stopRobot();
 }
 
+void Plugin::teachMode(bool tm)
+{
+    if(tm)
+        ur_robot->teachMode();
+    else
+        ur_robot->endTeachMode();
+}
+
+void Plugin::updateState()
+{
+    if(ur_robot_exists)
+    {
+        rw::math::Q currentQ = ur_robot->getActualQ();
+        rw::kinematics::State s = rws_state;
+        rws_robot->setQ(currentQ, s);
+        getRobWorkStudio()->setState(s);
+    }
+}
+
 void Plugin::RunRobotMimic()
 {
     if(!ur_robot_exists)
@@ -136,10 +168,8 @@ void Plugin::RunRobotMimic()
 
     while(true)
     {
-        rw::math::Q currentQ = ur_robot->getActualQ();
-        rws_robot->setQ(currentQ, rws_state);
-        getRobWorkStudio()->setState(rws_state);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        updateState();
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 }
 
