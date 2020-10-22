@@ -146,7 +146,7 @@ void Plugin::RunRobotMimic()
 void Plugin::connectRobot()
 {
     std::cout << "Connecting to " << ur_robot_ip << "..." << std::endl;
-    if(ur_robot_exists)
+    if(!ur_robot_exists)
     {
         ur_robot = new rwhw::URRTDE(ur_robot_ip);
         ur_robot_exists = true;
@@ -159,7 +159,7 @@ void Plugin::connectRobot()
 void Plugin::homeRobot()
 {
     std::cout << "Setting RWS robot home Q:" << std::endl;
-    //std::cout << "> From:\t" << rws_robot->getQ(rws_state) << std::endl;
+    std::cout << "> From:\t" << rws_robot->getQ(rws_state) << std::endl;
     std::cout << "> To:\t" << home << std::endl;
     rws_robot->setQ(home,rws_state);
     getRobWorkStudio()->setState(rws_state);
