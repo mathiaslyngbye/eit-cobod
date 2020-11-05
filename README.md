@@ -18,30 +18,30 @@ In order for it to work smoothly with QtCreator, go to
 | Exectuable | %{sourceDir}/start.sh |
 | Working directory | %{sourceDir} |
 
-## Prerequisites
+### Various notes
+Following are some notes about how the system works so far. Practical uses of below may be found in functions ```RunRobotControl```, ```RunRobotMimic```, and ```createPathRRTConnect```.
+* On startup, run ```Connect``` before doing anything else. 
+* If robot position is needed (it mostly is), run ```Start robot mimic``` to enable the digital twin to read values from the robot. 
+* When RobWorkStudio state is updated, it calls the ```stateChangedListener(...)``` which in turn updates the global ```rws_state``` variable. Never alter ```rws_state```. If you need the current state, make a copy (i.e. ```rw::kinematics::State tmp_state = rws_state;```)
+* All ur_rtde move-to-position commands require values for acceleration and velocity. I made a wrapper (```addMove(...)```) for this to avoid saving static version of these. In practice, this means that we save joint positions as ```std::vector<double> q = {q1, q2, ..., q5}```, and may add the extra variables before pushing values to the path, e.g. ```std::vector<double> gripMove = addMove(gripQ, 0.2, 0.2);```.
+* Function ```addMove()``` uses _optional_ arguments, i.e. if not velocity or acceleration is specifies, it defaults to 0.5 for both.
+* To make new buttons, be aware that they should be added 3 places; in the header (i.e. ```_btn0```), in the constructor, and in the ```clickEvent``` handler function. Just copy and modify what is already in these places for the millions of buttons already added.
+
+## Installation/prerequisites
 ### Qt
 ```bash
 sudo apt install qtbase5-dev
 ```
-### RobWork (And colliding packages)
+### RobWork
 Add sdurobotics/robwork to apt ppa repositories.
 ```bash
 sudo add-apt-repository ppa:sdurobotics/robwork
 sudo apt-get update
 ```
-Install packages with 
+Install needed packages with the following command (Note: RobWorkHardware is no longer required. We bypass this by using ur_rtde directly).
 ```bash
 sudo apt install libsdurw-all-dev
 sudo apt install libsdurws-all-dev
-sudo apt install libsdurwhw-all-dev
-sudo apt install libsdurwsim-all-dev
-```
-
-If these packages collide with URRTDE, the installation fails.
-Overwrite colliding packages by
-``` bash
-sudo dpkg -i --force-overwrite /var/cache/apt/archives/sdurwhw-cmake1.1_1.1.11-2_amd64.deb
-sudo dpkg -i --force-overwrite /var/cache/apt/archives/libsdurwhw-universalrobots-rtde1.1_1.1.11-2_amd64.deb
 ```
 
 Compiling projects with robwork may need the 'libassimp' package, install it with:
@@ -49,10 +49,23 @@ Compiling projects with robwork may need the 'libassimp' package, install it wit
 sudo apt install libassimp-dev
 ```
 
-### Configure network
+### UR RTDE
+### RobWork
+Add sdurobotics/ur-rtde to apt ppa repositories.
+```bash
+sudo add-apt-repository ppa:sdurobotics/robwork
+sudo apt-get update
+```
+
+Install ur_rtde library.
+```bash
+sudo apt install librtde librtde-dev
+```
+
+## Network configuration
 1. Read robot IP and DNS from tablet interface. 
 2. Configure the wired IPv4 connection:
    * IPv4 Method: Manual
    * Addresses: Address NOT the same subnet as robot (i.e. if robot is 192.168.0.212, your PC may be 192.168.0.250). Netmask matching the robot.
    * DNS: Matching robot; likely 0.0.0.0.
-3. When done configuring, if it doesn't work - restart your wired connection.
+3. When done configuring restart your wired connection.
