@@ -50,10 +50,9 @@ sudo apt install libassimp-dev
 ```
 
 ### UR RTDE
-### RobWork
 Add sdurobotics/ur-rtde to apt ppa repositories.
 ```bash
-sudo add-apt-repository ppa:sdurobotics/robwork
+sudo add-apt-repository ppa:sdurobotics/ur-rtde
 sudo apt-get update
 ```
 
