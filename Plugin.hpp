@@ -8,12 +8,17 @@
 #include <RobWorkStudio.hpp>
 #include <rws/RobWorkStudioPlugin.hpp>
 
-// RobWorkHardware includes
-#include <rwhw/universalrobots/UniversalRobotsData.hpp>
-#include <rwhw/universalrobots_rtde/URRTDE.hpp>
+// UR RTDE includes
+#include <ur_rtde/rtde_control_interface.h>
+#include <ur_rtde/rtde_receive_interface.h>
+#include <ur_rtde/rtde_io_interface.h>
 
 // RobWork library includes
 #include <rwlibs/proximitystrategies/ProximityStrategyFactory.hpp>
+//#include <rwlibs/pathplanners/rrt/RRTPlanner.hpp>
+//#include <rwlibs/pathplanners/rrt/RRTQToQPlanner.hpp>
+
+#include <boost/bind.hpp>
 
 // Qt includes
 #include <QPushButton>
@@ -47,6 +52,7 @@ private slots:
     void clickEvent();
     void stateChangedListener(const rw::kinematics::State& state);
 
+
     // Threads
     void RunRobotMimic();
     void RunRobotControl();
@@ -55,22 +61,35 @@ private slots:
     void startRobotMimic();
     void startRobotControl();
     void teachMode(bool);
-    void homeRobot();
+
     void connectRobot();
+
     void stopRobot();
-    void updateState();
+    void printArray(std::vector<double>);
+
+    // Others
+    //void createPathRRTConnect(rw::math::Q, rw::math::Q, double, std::vector<rw::math::Q>&, rw::kinematics::State);
+    //std::vector<double> addMove(std::vector<double>, double, double, double);
 
 private:
     rw::proximity::CollisionDetector::Ptr collisionDetector;
     rw::models::WorkCell::Ptr rws_wc;
     rw::kinematics::State rws_state;
     rw::models::Device::Ptr rws_robot;
-    QPushButton *_btn0,*_btn1,*_btn2,*_btn3,*_btn4, *_btn5, *_btn6;
-    rw::math::Q home = rw::math::Q(6, 0, 0, 0, 0, 0, 0);
+
+    QPushButton *_btn0,*_btn1,*_btn2,*_btn3,*_btn4, *_btn5, *_btn6, *_btn7;
 
     std::string ur_robot_ip = "192.168.0.212";
-    rwhw::URRTDE *ur_robot;
+    ur_rtde::RTDEControlInterface   *ur_robot;
+    ur_rtde::RTDEIOInterface        *ur_robot_io;
+    ur_rtde::RTDEReceiveInterface   *ur_robot_receive;
     bool ur_robot_exists = false;
+
+    // Positions                       j0        j1        j2        j3        j4        j5       a    v
+    std::vector<double> gripQ =     {  1.03566, -1.18752,  1.98773, -2.39819, -1.55003, -1.74102 }; //, 0.2, 0.2 };
+    std::vector<double> gripTCP =   { -0.15573, -0.52874,  0.17813,  1.77626, -2.57197,  0.04202 }; //, 0.2, 0.2 };
+    std::vector<double> homeQ =     {  1.17810, -1.57080,  1.57080, -1.57080, -1.57080, -1.57080 }; //, 0.2, 0.2 };
+    std::vector<double> homeTCP =   { -0.06489, -0.50552,  0.48784, -1.74588,  2.61176,  0.00493 }; //, 0.2, 0.2 };
 
     // Flags
     std::atomic_bool ur_robot_stopped;

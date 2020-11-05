@@ -19,18 +19,10 @@ In order for it to work smoothly with QtCreator, go to
 | Working directory | %{sourceDir} |
 
 ## Prerequisites
-
-### Install UR RTDE library
+### Qt
 ```bash
-sudo add-apt-repository ppa:sdurobotics/ur-rtde
+sudo apt install qtbase5-dev
 ```
-```bash
-sudo apt-get update
-```
-```bash
-sudo apt install librtde librtde-dev
-```
-
 ### RobWork (And colliding packages)
 Add sdurobotics/robwork to apt ppa repositories.
 ```bash
