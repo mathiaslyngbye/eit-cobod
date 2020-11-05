@@ -26,6 +26,7 @@ Following are some notes about how the system works so far. Practical uses of be
 * All ur_rtde move-to-position commands require values for acceleration and velocity. I made a wrapper (```addMove(...)```) for this to avoid saving static version of these. In practice, this means that we save _only_ joint positions as ```std::vector<double> q = {q1, q2, ..., q5}```, and later add acceleration and velocity before pushing values to a path, e.g. ```std::vector<double> gripMove = addMove(gripQ, 0.2, 0.2);```.
 * Function ```addMove()``` uses _optional_ arguments, i.e. if not velocity or acceleration is specifies, it defaults to 0.5 for both.
 * To make new buttons, be aware that they should be added 3 places; in the header (i.e. ```_btn0```), in the constructor, and in the ```clickEvent``` handler function. Just copy and modify what is already in these places for the millions of buttons already added.
+* If you need to plan a route, you may add a button and try to mimic what I did in the ```RunHomeRobot``` function. Be aware that if it is not run as its own thread, it hijacks the main thread, and the display won't work for the duration. This is perfectly okay for testing, though. I will momentarily re-add the printQ function (it got butchered during the great debug session), so you can enable teach mode, got to a location, print Q values, and manually save them.
 
 ## Installation/prerequisites
 ### Qt
