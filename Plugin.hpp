@@ -15,9 +15,10 @@
 
 // RobWork library includes
 #include <rwlibs/proximitystrategies/ProximityStrategyFactory.hpp>
-//#include <rwlibs/pathplanners/rrt/RRTPlanner.hpp>
-//#include <rwlibs/pathplanners/rrt/RRTQToQPlanner.hpp>
+#include <rwlibs/pathplanners/rrt/RRTPlanner.hpp>
+#include <rwlibs/pathplanners/rrt/RRTQToQPlanner.hpp>
 
+// Boost includes
 #include <boost/bind.hpp>
 
 // Qt includes
@@ -49,27 +50,31 @@ public:
     virtual void initialize();
 
 private slots:
+    // Plugin default
     void clickEvent();
     void stateChangedListener(const rw::kinematics::State& state);
 
-
-    // Threads
+    // Functions
     void RunRobotMimic();
     void RunRobotControl();
+    void RunHomeRobot();
 
-    // Button functions
+    // Start thread
     void startRobotMimic();
     void startRobotControl();
+    void startHomeRobot();
+
+    // Manage
+    void connectRobot();
+    void stopRobot();
     void teachModeToggle();
 
-    void connectRobot();
-
-    void stopRobot();
+    // Assistive
     void printArray(std::vector<double>);
+    std::vector<double> addMove(std::vector<double>, double, double);
 
-    // Others
-    //void createPathRRTConnect(rw::math::Q, rw::math::Q, double, std::vector<rw::math::Q>&, rw::kinematics::State);
-    //std::vector<double> addMove(std::vector<double>, double, double, double);
+    // Planning
+    void createPathRRTConnect(std::vector<double>, std::vector<double>, double, std::vector<std::vector<double>>&, rw::kinematics::State);
 
 private:
     // Qt buttons
@@ -101,6 +106,7 @@ private:
     // Threads
     std::thread control_thread;
     std::thread update_thread;
+    std::thread home_thread;
 };
 
 #endif /*PLUGIN_HPP*/

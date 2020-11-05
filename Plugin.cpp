@@ -31,6 +31,10 @@ Plugin::Plugin():
     pLayout->addWidget(_btn4, row++, 0);
     connect(_btn4, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
+    _btn5 = new QPushButton("Home robot");
+    pLayout->addWidget(_btn5, row++, 0);
+    connect(_btn5, SIGNAL(clicked()), this, SLOT(clickEvent()));
+
     pLayout->setRowStretch(row,1);
 
     // Initialize flags
@@ -90,6 +94,8 @@ void Plugin::clickEvent()
         stopRobot();
     else if(obj == _btn4)
         teachModeToggle();
+    else if(obj == _btn5)
+        startHomeRobot();
 }
 
 void Plugin::stateChangedListener(const rw::kinematics::State& state)
@@ -120,7 +126,7 @@ void Plugin::connectRobot()
         std::cout << "Already connected..." << std::endl;
 }
 
-std::vector<double> addMove(std::vector<double> position, double acceleration = 0.5, double velocity = 0.5)
+std::vector<double> Plugin::addMove(std::vector<double> position, double acceleration = 0.5, double velocity = 0.5)
 {
     std::vector<double> move = { acceleration, velocity };
     std::vector<double> position_and_move;
@@ -140,9 +146,8 @@ void Plugin::RunRobotControl()
 
     if(ur_robot_teach_mode)
     {
-        std::cout << "Teach mode enabled. Disabling..." << std::endl;
-        ur_robot->endTeachMode();
-        ur_robot_teach_mode = false;
+        std::cout << "Teach mode enabled..." << std::endl;
+        return;
     }
 
     std::vector<double> grip = addMove(gripQ, 0.2, 0.2);
@@ -165,8 +170,7 @@ void Plugin::RunRobotControl()
         path.push_back(home);
         ur_robot->moveJ(path);
     }
-
-    ur_robot->stopScript();
+    // ur_robot->stopScript(); // Stops further actions
 }
 
 void Plugin::teachModeToggle()
@@ -222,10 +226,45 @@ void Plugin::startRobotControl()
     control_thread = std::thread(&Plugin::RunRobotControl, this);
 }
 
+void Plugin::startHomeRobot()
+{
+    if(home_thread.joinable())
+        home_thread.join();
+    home_thread = std::thread(&Plugin::RunHomeRobot, this);
+}
+
 void Plugin::stopRobot()
 {
     std::cout << "Stopping robot..." << std::endl;
     ur_robot_stopped = true;
+}
+
+void Plugin::RunHomeRobot()
+{
+    if(!ur_robot_exists)
+    {
+        std::cout << "Robot not connected..." << std::endl;
+        return;
+    }
+
+    if(ur_robot_teach_mode)
+    {
+        std::cout << "Teach mode enabled..." << std::endl;
+        return;
+    }
+
+    std::cout << "Homing robot..." << std::endl;
+
+    std::vector<std::vector<double>> path;
+    std::vector<double> fromQ = ur_robot_receive->getActualQ();
+    std::vector<double> toQ = homeQ;
+    rw::kinematics::State tmp_state = rws_state;
+
+    createPathRRTConnect(fromQ, toQ, 0.05, path, tmp_state);
+
+    std::cout << "Moving robot..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    ur_robot->moveJ(path);
 }
 
 void Plugin::printArray(std::vector<double> input)
@@ -236,25 +275,24 @@ void Plugin::printArray(std::vector<double> input)
     std::cout << input[input.size()-1] << " }" << std::endl;
 }
 
-/*
-void Plugin::createPathRRTConnect(rw::math::Q from, rw::math::Q to, double epsilon, std::vector<rw::math::Q> &path, rw::kinematics::State state)
+void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> to, double epsilon, std::vector<std::vector<double>> &path, rw::kinematics::State state)
 {
-    //ur_robot->setQ(from,state);
-
     rw::pathplanning::PlannerConstraint constraint = rw::pathplanning::PlannerConstraint::make(collisionDetector.get(), rws_robot, state);
     rw::pathplanning::QSampler::Ptr sampler = rw::pathplanning::QSampler::makeConstrained(rw::pathplanning::QSampler::makeUniform(rws_robot), constraint.getQConstraintPtr());
     rw::math::QMetric::Ptr metric = rw::math::MetricFactory::makeEuclidean<rw::math::Q>();
     rw::pathplanning::QToQPlanner::Ptr planner = rwlibs::pathplanners::RRTPlanner::makeQToQPlanner(constraint, sampler, metric, epsilon, rwlibs::pathplanners::RRTPlanner::RRTConnect);
 
     rw::trajectory::QPath qpath;
-    std::cout << "Generating path with NO max. time. Be patient or cancel manually... " << std::flush;
-    planner->query(from, to, qpath);
-    std::cout << "You done it!" << std::endl;
+    std::cout << "Generating path with NO max. time. Be patient or cancel manually... " << std::endl;
+    planner->query(from, to, qpath); // DOES THIS JUST ACCEPT VECTORS OF DOUBLES???
+    std::cout << "Found path of size " << qpath.size() << '!' << std::endl;
 
     path.clear();
     for(const auto &q : qpath)
     {
-        path.push_back(q);
+        path.push_back(addMove(q.toStdVector()));
     }
 }
-*/
+
+
+
