@@ -114,7 +114,7 @@ void Plugin::connectRobot()
         std::cout << "Connected!" << std::endl;
 
         ur_robot_exists = true;
-        std::cout << "Done!" << std::endl;
+        std::cout << "Robot ready!" << std::endl;
     }
     else
         std::cout << "Already connected..." << std::endl;
@@ -136,6 +136,13 @@ void Plugin::RunRobotControl()
     {
         std::cout << "Robot not connected..." << std::endl;
         return;
+    }
+
+    if(ur_robot_teach_mode)
+    {
+        std::cout << "Teach mode enabled. Disabling..." << std::endl;
+        ur_robot->endTeachMode();
+        ur_robot_teach_mode = false;
     }
 
     std::vector<double> grip = addMove(gripQ, 0.2, 0.2);
@@ -169,16 +176,18 @@ void Plugin::teachModeToggle()
         if(ur_robot_teach_mode)
         {
             ur_robot->endTeachMode();
-            std::cout << "Teach mode disabled!" << std::endl;
+            std::cout << "Disabling teach mode!" << std::endl;
             ur_robot_teach_mode = false;
         }
         else
         {
             ur_robot->teachMode();
-            std::cout << "Teach mode enabled!" << std::endl;
+            std::cout << "Enabling teach mode!" << std::endl;
             ur_robot_teach_mode = true;
         }
     }
+    else
+        std::cout << "Robot not connected..." << std::endl;
 }
 
 void Plugin::RunRobotMimic()
