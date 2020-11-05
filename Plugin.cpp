@@ -8,42 +8,35 @@ Plugin::Plugin():
     base->setLayout(pLayout);
     this->setWidget(base);
 
+    // Define button layout
     int row = 0;
 
     _btn0 = new QPushButton("Connect");
     pLayout->addWidget(_btn0, row++, 0);
     connect(_btn0, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn1 = new QPushButton("Home rws robot");
+    _btn1 = new QPushButton("Start robot mimic");
     pLayout->addWidget(_btn1, row++, 0);
     connect(_btn1, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn2 = new QPushButton("Start robot mimic");
+    _btn2 = new QPushButton("Start robot control");
     pLayout->addWidget(_btn2, row++, 0);
     connect(_btn2, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn3 = new QPushButton("Start robot control");
+    _btn3 = new QPushButton("Stop robot");
     pLayout->addWidget(_btn3, row++, 0);
     connect(_btn3, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn4 = new QPushButton("Stop robot");
+    _btn4 = new QPushButton("Toggle teach mode");
     pLayout->addWidget(_btn4, row++, 0);
     connect(_btn4, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn5 = new QPushButton("Start teach mode");
-    pLayout->addWidget(_btn5, row++, 0);
-    connect(_btn5, SIGNAL(clicked()), this, SLOT(clickEvent()));
-
-    _btn6 = new QPushButton("Stop teach mode");
-    pLayout->addWidget(_btn6, row++, 0);
-    connect(_btn6, SIGNAL(clicked()), this, SLOT(clickEvent()));
-
-    _btn7 = new QPushButton("Print L");
-    pLayout->addWidget(_btn7, row++, 0);
-    connect(_btn7, SIGNAL(clicked()), this, SLOT(clickEvent()));
-
-
     pLayout->setRowStretch(row,1);
+
+    // Initialize flags
+    ur_robot_exists = false;
+    ur_robot_teach_mode = false;
+    ur_robot_stopped = true;
 }
 
 Plugin::~Plugin()
@@ -90,27 +83,13 @@ void Plugin::clickEvent()
     if(obj == _btn0)
         connectRobot();
     else if(obj == _btn1)
-        ;//homeRobot();
-    else if(obj == _btn2)
         startRobotMimic();
-    else if(obj == _btn3)
+    else if(obj == _btn2)
         startRobotControl();
-    else if(obj == _btn4)
+    else if(obj == _btn3)
         stopRobot();
-    else if(obj == _btn5)
-        teachMode(true);
-    else if(obj == _btn6)
-        teachMode(false);
-    else if(obj == _btn7)
-    {
-        ;
-        /*
-        std::cout << "Robot Q:" << std::endl;
-        printArray(ur_robot_receive->getActualQ());
-        std::cout << "Robot TCP:" << std::endl;
-        printArray(ur_robot_receive->getActualTCPPose());
-        */
-    }
+    else if(obj == _btn4)
+        teachModeToggle();
 }
 
 void Plugin::stateChangedListener(const rw::kinematics::State& state)
@@ -119,9 +98,31 @@ void Plugin::stateChangedListener(const rw::kinematics::State& state)
     log().info() << "State changed!";
 }
 
-std::vector<double> addMove(std::vector<double> position, double acceleration = 0.1, double velocity = 0.1, double blend = 0.1)
+void Plugin::connectRobot()
 {
-    std::vector<double> move = { acceleration, velocity, blend };
+    std::cout << "Connecting to " << ur_robot_ip << "..." << std::endl;
+    if(!ur_robot_exists)
+    {
+        std::cout << "Control interface:\t";
+        ur_robot = new ur_rtde::RTDEControlInterface(ur_robot_ip);
+        std::cout << "Connected!" << std::endl;
+        std::cout << "Receive interface:\t";
+        ur_robot_receive = new ur_rtde::RTDEReceiveInterface(ur_robot_ip);
+        std::cout << "Connected!" << std::endl;
+        std::cout << "IO interface:\t";
+        ur_robot_io = new ur_rtde::RTDEIOInterface(ur_robot_ip);
+        std::cout << "Connected!" << std::endl;
+
+        ur_robot_exists = true;
+        std::cout << "Done!" << std::endl;
+    }
+    else
+        std::cout << "Already connected..." << std::endl;
+}
+
+std::vector<double> addMove(std::vector<double> position, double acceleration = 0.5, double velocity = 0.5)
+{
+    std::vector<double> move = { acceleration, velocity };
     std::vector<double> position_and_move;
     position_and_move.reserve(position.size() + move.size());
     position_and_move.insert( position_and_move.end(), position.begin(), position.end() );
@@ -137,10 +138,8 @@ void Plugin::RunRobotControl()
         return;
     }
 
-    std::vector<double> grip =   { -0.15573, -0.52874,  0.17813,  1.77626, -2.57197,  0.04202, 0.2, 0.2 };
-    std::vector<double> home =   { -0.06489, -0.50552,  0.48784, -1.74588,  2.61176,  0.00493, 0.2, 0.2 };
-    //std::vector<double> pos_down = addMove(gripTCP, 0.1, 0.1, 0.1);
-    //std::vector<double> pos_up = addMove(homeQ, 0.1, 0.1, 0.1);
+    std::vector<double> grip = addMove(gripQ, 0.2, 0.2);
+    std::vector<double> home = addMove(homeQ);
 
     std::vector<std::vector<double>> path;
 
@@ -151,26 +150,34 @@ void Plugin::RunRobotControl()
         path.clear();
         ur_robot_io->setStandardDigitalOut(0,OPEN);
         path.push_back(grip);
-        ur_robot->moveL(path);
+        ur_robot->moveJ(path);
 
         // Close and move up
         ur_robot_io->setStandardDigitalOut(0,CLOSE);
         path.clear();
         path.push_back(home);
-        ur_robot->moveL(path);
+        ur_robot->moveJ(path);
     }
 
     ur_robot->stopScript();
 }
 
-void Plugin::teachMode(bool tm)
+void Plugin::teachModeToggle()
 {
     if(ur_robot_exists)
     {
-        if(tm)
-            ur_robot->teachMode();
-        else
+        if(ur_robot_teach_mode)
+        {
             ur_robot->endTeachMode();
+            std::cout << "Teach mode disabled!" << std::endl;
+            ur_robot_teach_mode = false;
+        }
+        else
+        {
+            ur_robot->teachMode();
+            std::cout << "Teach mode enabled!" << std::endl;
+            ur_robot_teach_mode = true;
+        }
     }
 }
 
@@ -190,27 +197,6 @@ void Plugin::RunRobotMimic()
         getRobWorkStudio()->setState(s);
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
-}
-
-void Plugin::connectRobot()
-{
-    std::cout << "Connecting to " << ur_robot_ip << "..." << std::endl;
-    if(!ur_robot_exists)
-    {
-        std::cout << "Control interface:\t";
-        ur_robot = new ur_rtde::RTDEControlInterface(ur_robot_ip);
-        std::cout << "Connected!" << std::endl;
-        std::cout << "Receive interface:\t";
-        ur_robot_receive = new ur_rtde::RTDEReceiveInterface(ur_robot_ip);
-        std::cout << "Connected!" << std::endl;
-        std::cout << "IO interface:\t";
-        ur_robot_io = new ur_rtde::RTDEIOInterface(ur_robot_ip);
-        std::cout << "Connected!" << std::endl;
-
-        ur_robot_exists = true;
-    }
-    else
-        std::cout << "Already connected..." << std::endl;
 }
 
 void Plugin::startRobotMimic()
