@@ -87,7 +87,7 @@ private:
     rw::models::Device::Ptr rws_robot;
 
     // UR interface
-    std::string ur_robot_ip = "192.168.0.212";
+    std::string ur_robot_ip = "192.168.1.210";
     ur_rtde::RTDEControlInterface   *ur_robot;
     ur_rtde::RTDEIOInterface        *ur_robot_io;
     ur_rtde::RTDEReceiveInterface   *ur_robot_receive;
