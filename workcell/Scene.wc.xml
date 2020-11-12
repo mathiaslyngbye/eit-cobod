@@ -20,7 +20,7 @@
     </Frame>
     <Include file="objects/Festo/gripper.stl" />
     -->
-    
+    <!-- idk why this doesnt work -->
     <Frame name="GraspTCP" refframe="UR5e_2018.Flange" type="Fixed">
         <RPY>0 0 0</RPY> <Pos>0 0 0.15</Pos>
     </Frame>
