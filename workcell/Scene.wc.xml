@@ -11,23 +11,23 @@
     <Frame name="URReference" refframe="Table" type="Movable">
         <RPY>112.5 0 0</RPY> <Pos>-0.275 0 0.19</Pos> <!-- was 117.5 -->
     </Frame>
-    <Include file="devices/UR5e_2018/UR5e.xml" />
+    <Include file="devices/UR-6-85-5-A/Device.wc.xml" />
     
     
-   <!-- <Frame name="Gripper" refframe="UR5e_2018.Flange" type="Fixed">
+   <!--< Frame name="Gripper" refframe="UR-6-85-5-A.TCP" type="Fixed">
         <RPY>0 0 0</RPY> 
 	<Pos>0 0 0.072</Pos>
     </Frame>
-    <Include file="objects/Festo/gripper.stl" />
+    <Include file="devices/wsg50/wsg50.xml" />
     -->
     <!-- idk why this doesnt work -->
-    <Frame name="GraspTCP" refframe="UR5e_2018.Flange" type="Fixed">
+    <!--<Frame name="GraspTCP" refframe="UR-6-85-5-A.TCP" type="Fixed">
         <RPY>0 0 0</RPY> <Pos>0 0 0.15</Pos>
-    </Frame>
+    </Frame> -->
 
     
-    <Frame name="Scanner25D" refframe="UR5e_2018.Flange" type="Movable">
-	    <Pos>0 -0.07 0</Pos>
+    <Frame name="Scanner25D" refframe="UR-6-85-5-A.TCP" type="Movable">
+	    <Pos>0 -0.06 0</Pos>
 	    <RPY>0 0 180</RPY>
 	    <Property name="Scanner25D" desc="[fovy,width,height]">50 640 480</Property>
     </Frame>
@@ -39,8 +39,8 @@
         </Drawable>
 	</Frame>
 
-    <Frame name="Camera" refframe="UR5e_2018.Flange" type="Movable">
-        <Pos>0 -0.07 0</Pos>
+    <Frame name="Camera" refframe="UR-6-85-5-A.TCP" type="Movable">
+        <Pos>0 -0.06 0</Pos>
         <RPY>0 0 180</RPY>
         <Property name="Camera" desc="[fovy,width,height]">50 640 480</Property>
     </Frame>
