@@ -35,23 +35,23 @@ Plugin::Plugin():
     pLayout->addWidget(_btn5, row++, 0);
     connect(_btn5, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn6 = new QPushButton("Print Q:");
+    _btn6 = new QPushButton("Print Location");
     pLayout->addWidget(_btn6, row++, 0);
     connect(_btn6, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn7 = new QPushButton("Grip Rebar Fast");
+    _btn7 = new QPushButton("Go to Pick Approach");
     pLayout->addWidget(_btn7, row++, 0);
     connect(_btn7, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn8 = new QPushButton("Grip Rebar Slow");
+    _btn8 = new QPushButton("Pick Rebar");
     pLayout->addWidget(_btn8, row++, 0);
     connect(_btn8, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn9 = new QPushButton("Place Rebar Fast");
+    _btn9 = new QPushButton("Go to Place Approach");
     pLayout->addWidget(_btn9, row++, 0);
     connect(_btn9, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn10 = new QPushButton("Place Rebar Slow");
+    _btn10 = new QPushButton("Place Rebar");
     pLayout->addWidget(_btn10, row++, 0);
     connect(_btn10, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
@@ -117,15 +117,15 @@ void Plugin::clickEvent()
     else if(obj == _btn5)
         startHomeRobot();
     else if(obj == _btn6)
-        PrintQ();
+        printLocation();
     else if(obj == _btn7)
-        GripRebarFast();
+        moveToJ(pickApproachQ,0.8,0.8);
     else if(obj == _btn8)
-        GripRebarSlow();
+        moveToPick();
     else if(obj == _btn9)
-        PlaceRebarFast();
+        moveToJ(placeApproachQ,0.8,0.8);
     else if(obj == _btn10)
-        PlaceRebarSlow();
+        moveToPlace();
 }
 
 void Plugin::stateChangedListener(const rw::kinematics::State& state)
@@ -180,14 +180,27 @@ void Plugin::RunRobotControl()
         return;
     }
 
+    /*
     std::vector<double> grip = addMove(gripQ, 0.2, 0.2);
     std::vector<double> home = addMove(homeQ);
 
     std::vector<std::vector<double>> path;
+    */
 
     ur_robot_stopped = false;
     while(!ur_robot_stopped)
     {
+        // Move home
+        moveToJ(homeQ,0.5,0.5);
+
+        // Move to approach
+        moveToJ(pickApproachQ, 0.2, 0.2);
+
+        // Grip
+        moveToPick();
+
+        break;
+        /*
         // Open and move down
         path.clear();
         ur_robot_io->setStandardDigitalOut(0,OPEN);
@@ -199,6 +212,7 @@ void Plugin::RunRobotControl()
         path.clear();
         path.push_back(home);
         ur_robot->moveJ(path);
+        */
     }
     // ur_robot->stopScript(); // Stops further actions
 }
@@ -266,10 +280,12 @@ void Plugin::startHomeRobot()
 void Plugin::stopRobot()
 {
     std::cout << "Stopping robot..." << std::endl;
+    ur_robot->stopL();
+    ur_robot->stopJ();
     ur_robot_stopped = true;
 }
 
-void Plugin::GripRebarFast()
+void Plugin::moveToJ(std::vector<double> goal, double acceleration, double velocity)
 {
     if(!ur_robot_exists)
     {
@@ -283,119 +299,80 @@ void Plugin::GripRebarFast()
         return;
     }
 
-    std::cout << "Moving to grip location" << std::endl;
-    std::vector<double> grip = addMove(gripFast, 1.0, 1.0);
-    std::vector<double> home = addMove(gripFast, 1.0, 1.0);
+    std::cout << "Moving to location" << std::endl;
+    ur_robot->moveJ(goal, acceleration, velocity);
+}
+
+void Plugin::moveToPick()
+{
+    if(!ur_robot_exists)
+    {
+        std::cout << "Robot not connected..." << std::endl;
+        return;
+    }
+
+    if(ur_robot_teach_mode)
+    {
+        std::cout << "Teach mode enabled..." << std::endl;
+        return;
+    }
+
+    std::cout << "Moving to pick location..." << std::endl;
+    std::vector<double> approach = pickApproachL; // = { -0.313509, -0.493764, 0.407642, 1.74502, -2.61216, 0.000178952 };
+    std::vector<std::vector<double>> path;
+    std::vector<double> force_direction = {0.0,0.0,0.0};
+
+    for(int i = 0; i<20; i++)
+    {
+        ur_robot->moveL(approach,0.1,1.2);
+        approach[2] -= 0.01;
+
+        //std::cout << ur_robot->toolContact(force_direction) << std::endl;
+    }
+
+    /*if(ur_robot->toolContact({0,0,-1}))
+        break;*/
+
+    //std::cout << ur_robot -> toolContact({0,0,-1}) << std::endl;
+    /*
+    if(ur_robot->toolContact({0,0,-1}))
+        break;*/
+
+    //std::cout << "Moving back up..." << std::endl;
+    //ur_robot->moveL(pickApproachL,0.1,0.1,true);
+    //return;
+}
+
+void Plugin::moveToPlace()
+{
+    if(!ur_robot_exists)
+    {
+        std::cout << "Robot not connected..." << std::endl;
+        return;
+    }
+
+    if(ur_robot_teach_mode)
+    {
+        std::cout << "Teach mode enabled..." << std::endl;
+        return;
+    }
+
+    std::cout << "Moving slowly down.." << std::endl;
+    std::vector<double> grip = addMove(placeQ, 0.2, 0.2);
+    std::vector<double> home = addMove(placeApproachQ, 0.2, 0.2);
+
     std::vector<std::vector<double>> path;
 
-    // Move robot
     path.clear();
+    ur_robot_io->setStandardDigitalOut(0,CLOSE);
     path.push_back(grip);
     ur_robot->moveJ(path);
-}
 
-
-
-void Plugin::GripRebarSlow()
-{
-    if(!ur_robot_exists)
-    {
-        std::cout << "Robot not connected..." << std::endl;
-        return;
-    }
-
-    if(ur_robot_teach_mode)
-    {
-        std::cout << "Teach mode enabled..." << std::endl;
-        return;
-    }
-
-    std::cout << "Moving slowly down..." << std::endl;
-    std::vector<double> grip = addMove(gripSlow, 0.2, 0.2);
-    std::vector<double> home = addMove(gripFast,0.2,0.2);
-
-    std::vector<std::vector<double>> path;
-
-   // ur_robot_stopped = false;
-    //while(!ur_robot_stopped)
-    //{
-        // Open and move down
-        path.clear();
-        ur_robot_io->setStandardDigitalOut(0,OPEN);
-        path.push_back(grip);
-        ur_robot->moveJ(path);
-
-        // Close and move up
-        ur_robot_io->setStandardDigitalOut(0,CLOSE);
-        path.clear();
-        path.push_back(home);
-        ur_robot->moveJ(path);
-   // }
-    // ur_robot->stopScript(); // Stops further actions
-}
-
-
-void Plugin::PlaceRebarFast()
-{
-    if(!ur_robot_exists)
-    {
-        std::cout << "Robot not connected..." << std::endl;
-        return;
-    }
-
-    if(ur_robot_teach_mode)
-    {
-        std::cout << "Teach mode enabled..." << std::endl;
-        return;
-    }
-    std::cout << "Moving to place location" << std::endl;
-    std::vector<double> place = addMove(PlaceFast, 1.0, 1.0);
-     std::vector<std::vector<double>> path;
-
-     // Move robot
-     path.clear();
-     path.push_back(place);
-     ur_robot->moveJ(path);
-
-
-}
-
-void Plugin::PlaceRebarSlow()
-{
-    if(!ur_robot_exists)
-    {
-        std::cout << "Robot not connected..." << std::endl;
-        return;
-    }
-
-    if(ur_robot_teach_mode)
-    {
-        std::cout << "Teach mode enabled..." << std::endl;
-        return;
-    }
-
-    std::cout << "Moving slowly down.. then up" << std::endl;
-    std::vector<double> grip = addMove(PlaceSlow, 0.2, 0.2);
-    std::vector<double> home = addMove(PlaceFast, 0.2, 0.2);
-
-    std::vector<std::vector<double>> path;
-
-   // ur_robot_stopped = false;
-   // while(!ur_robot_stopped)
-   // {
-        // Close and move down
-        path.clear();
-        ur_robot_io->setStandardDigitalOut(0,CLOSE);
-        path.push_back(grip);
-        ur_robot->moveJ(path);
-
-        // Open and move up
-        ur_robot_io->setStandardDigitalOut(0,OPEN);
-        path.clear();
-        path.push_back(home);
-        ur_robot->moveJ(path);
-   // }
-    // ur_robot->stopScript(); // Stops further actions
+    // Open and move up
+    ur_robot_io->setStandardDigitalOut(0,OPEN);
+    path.clear();
+    path.push_back(home);
+    ur_robot->moveJ(path);
 }
 
 void Plugin::RunHomeRobot()
@@ -426,13 +403,15 @@ void Plugin::RunHomeRobot()
     ur_robot->moveJ(path);
 }
 
-void Plugin::PrintQ()
+void Plugin::printLocation()
 {
-   std::vector<double> input=ur_robot_receive->getActualQ();
-    std::cout << "{ ";
-    for(size_t i = 0; i < input.size()-1; i++)
-        std::cout << input[i] << ", ";
-    std::cout << input[input.size()-1] << " }" << std::endl;
+    std::cout << "JOINT POSE:" << std::endl;
+    std::vector<double> actualQ=ur_robot_receive->getActualQ();
+    printArray(actualQ);
+
+    std::cout << "TCP POSE:" << std::endl;
+    std::vector<double> actualL=ur_robot_receive->getActualTCPPose();
+    printArray(actualL);
 }
 
 void Plugin::printArray(std::vector<double> input)
@@ -458,7 +437,8 @@ void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> 
     path.clear();
     for(const auto &q : qpath)
     {
-        path.push_back(addMove(q.toStdVector()));
+        std::vector<double> q_copy = q.toStdVector();
+        path.push_back(addMove(q_copy, 0.5, 0.5));
     }
 }
 
