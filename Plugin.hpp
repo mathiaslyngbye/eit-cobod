@@ -3,6 +3,7 @@
 
 // RobWork includes
 #include <rw/rw.hpp>
+#include <rwlibs/simulation/GLFrameGrabber25D.hpp>
 
 // RobWorkStudio includes
 #include <RobWorkStudio.hpp>
@@ -78,12 +79,15 @@ private slots:
     void printArray(std::vector<double>);
     std::vector<double> addMove(std::vector<double>, double, double);
 
+    // Vision
+    void get25DImage();
+
     // Planning
     void createPathRRTConnect(std::vector<double>, std::vector<double>, double, std::vector<std::vector<double>>&, rw::kinematics::State);
 
 private:
     // Qt buttons
-    QPushButton *_btn0,*_btn1,*_btn2,*_btn3,*_btn4, *_btn5, *_btn6, *_btn7, *_btn8, *_btn9, *_btn10;
+    QPushButton *_btn0,*_btn1,*_btn2,*_btn3,*_btn4, *_btn5, *_btn6, *_btn7, *_btn8, *_btn9, *_btn10, *_btn11;
 
     // RobWorkStudio interface
     rw::proximity::CollisionDetector::Ptr collisionDetector;
@@ -110,6 +114,9 @@ private:
     std::vector<double> placeApproachL =   { 0.241712, -0.593151, 0.224805, -1.7459, 2.61178, 0.00491445 };
     std::vector<double> placeQ =   { 1.81889, -1.15219, 1.91062, -2.26603, -1.53601, -0.886415 };
 
+    //Vision
+    rwlibs::simulation::GLFrameGrabber25D* _framegrabber25D;
+    std::vector<std::string> _cameras25D;
 
 // q location for rebars, with 3 reabrs in it Q[6]{0.762658, -0.972519, 1.91634, -2.51089, -1.5408, -1.98513}
 // q for place    Q[6]{1.81889, -1.15219, 1.91062, -2.26603, -1.53601, -0.886415}

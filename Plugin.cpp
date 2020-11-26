@@ -55,12 +55,20 @@ Plugin::Plugin():
     pLayout->addWidget(_btn10, row++, 0);
     connect(_btn10, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
+    _btn11 = new QPushButton("Get 25DImage");
+    pLayout->addWidget(_btn11, row++, 0);
+    connect(_btn11, SIGNAL(clicked()), this, SLOT(clickEvent()));
+
+
     pLayout->setRowStretch(row,1);
 
     // Initialize flags
     ur_robot_exists = false;
     ur_robot_teach_mode = false;
     ur_robot_stopped = true;
+
+    //Initialize camera vector
+    _cameras25D = {"Scanner25D"};
 }
 
 Plugin::~Plugin()
@@ -88,6 +96,22 @@ void Plugin::open(rw::models::WorkCell* workcell)
 
         // Use rws collision checker
         collisionDetector = rw::common::ownedPtr(new rw::proximity::CollisionDetector(rws_wc, rwlibs::proximitystrategies::ProximityStrategyFactory::makeDefaultCollisionStrategy()));
+    }
+
+    rw::kinematics::Frame* cameraFrame25D = rws_wc->findFrame(_cameras25D[0]);
+    if (cameraFrame25D != NULL) {
+        if (cameraFrame25D->getPropertyMap().has("Scanner25D")) {
+            // Read the dimensions and field of view
+            double fovy;
+            int width,height;
+            std::string camParam = cameraFrame25D->getPropertyMap().get<std::string>("Scanner25D");
+            std::istringstream iss (camParam, std::istringstream::in);
+            iss >> fovy >> width >> height;
+            // Create a frame grabber
+            _framegrabber25D = new rwlibs::simulation::GLFrameGrabber25D(width,height,fovy);
+            rw::graphics::SceneViewer::Ptr gldrawer = getRobWorkStudio()->getView()->getSceneViewer();
+            _framegrabber25D->init(gldrawer);
+        }
     }
 
     std::cout << "End of open()" << std::endl;
@@ -126,6 +150,8 @@ void Plugin::clickEvent()
         moveToJ(placeApproachQ,0.8,0.8);
     else if(obj == _btn10)
         moveToPlace();
+    else if (obj == _btn11)
+        get25DImage();
 }
 
 void Plugin::stateChangedListener(const rw::kinematics::State& state)
@@ -324,7 +350,7 @@ void Plugin::moveToPick()
 
     for(int i = 0; i<20; i++)
     {
-        ur_robot->moveL(approach,0.1,1.2);
+        ur_robot->moveL(approach,0.1,1.2, true);
         approach[2] -= 0.01;
 
         //std::cout << ur_robot->toolContact(force_direction) << std::endl;
@@ -442,5 +468,40 @@ void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> 
     }
 }
 
+void Plugin::get25DImage() {
+    std::vector<double> q_vector = {rw::math::Pi/2,-rw::math::Pi/2,rw::math::Pi/2,-rw::math::Pi/2,-rw::math::Pi/2,0};
+    rw::math::Q new_q(q_vector);
+    //rw::math::Q old_q = rws_robot->getQ(rws_state);
+    rws_robot->setQ(new_q, rws_state);
+    getRobWorkStudio()->setState(rws_state);
+    if (_framegrabber25D != NULL) {
+        for( int i = 0; i < _cameras25D.size(); i ++)
+        {
+            // Get the image as a RW image
+            rw::kinematics::Frame* cameraFrame25D = rws_wc->findFrame(_cameras25D[i]); // "Camera");
+            _framegrabber25D->grab(cameraFrame25D, rws_state);
 
+            //const Image& image = _framegrabber->getImage();
+
+            const rw::geometry::PointCloud* img = &(_framegrabber25D->getImage());
+
+            std::ofstream output(_cameras25D[i] + ".pcd");
+            output << "# .PCD v.5 - Point Cloud Data file format\n";
+            output << "FIELDS x y z\n";
+            output << "SIZE 4 4 4\n";
+            output << "TYPE F F F\n";
+            output << "WIDTH " << img->getWidth() << "\n";
+            output << "HEIGHT " << img->getHeight() << "\n";
+            output << "POINTS " << img->getData().size() << "\n";
+            output << "DATA ascii\n";
+            for(const auto &p_tmp : img->getData())
+            {
+                rw::math::Vector3D<float> p = p_tmp;
+                output << p(0) << " " << p(1) << " " << p(2) << "\n";
+            }
+            output.close();
+
+        }
+    }
+}
 
