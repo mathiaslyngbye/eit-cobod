@@ -121,11 +121,11 @@ void Plugin::clickEvent()
     else if(obj == _btn7)
         moveToJ(pickApproachQ,0.8,0.8);
     else if(obj == _btn8)
-        moveToPick();
+        moveToForce(CLOSE);
     else if(obj == _btn9)
         moveToJ(placeApproachQ,0.8,0.8);
     else if(obj == _btn10)
-        moveToPlace();
+        moveToForce(OPEN);
 }
 
 void Plugin::stateChangedListener(const rw::kinematics::State& state)
@@ -187,32 +187,49 @@ void Plugin::RunRobotControl()
     std::vector<std::vector<double>> path;
     */
 
-    ur_robot_stopped = false;
-    while(!ur_robot_stopped)
-    {
-        // Move home
-        moveToJ(homeQ,0.5,0.5);
+    std::vector<double> dynamicPlaceApproachL = placeApproachL;
+    double theta = 22.5 * (M_PI / 180);
+    double d = 0.05;
+    double dy = d*cos(theta);
+    double dx = d*sin(theta);
+    std::cout << "c=" << 0.05 << "\tdy=" << dy << "\tdx=" << dx << std::endl;
 
-        // Move to approach
-        moveToJ(pickApproachQ, 0.2, 0.2);
+    ur_robot_stopped = false;
+    for(int i = 0; i<4; i++)
+    {
+        if(ur_robot_stopped)
+            break;
+
+        // Move home
+        moveToJ(homeQ,0.8,0.8);
+        ur_robot_io->setStandardDigitalOut(0,OPEN);
+
+        // Move to pick approach
+        moveToJ(pickApproachQ, 0.8, 0.8);
 
         // Grip
-        moveToPick();
+        moveToForce(CLOSE);
+        ur_robot->moveL(pickApproachL,0.8,0.8);
 
-        break;
-        /*
-        // Open and move down
-        path.clear();
-        ur_robot_io->setStandardDigitalOut(0,OPEN);
-        path.push_back(grip);
-        ur_robot->moveJ(path);
+        // Move home
+        moveToJ(homeQ,0.8,0.8);
 
-        // Close and move up
-        ur_robot_io->setStandardDigitalOut(0,CLOSE);
-        path.clear();
-        path.push_back(home);
-        ur_robot->moveJ(path);
-        */
+        // Move to place approach
+        ur_robot->moveL(dynamicPlaceApproachL,0.8,0.8);
+
+        // Ungrip
+        moveToForce(OPEN);
+        ur_robot->moveL(dynamicPlaceApproachL,0.8,0.8);
+
+        // Move home
+        moveToJ(homeQ,0.8,0.8);
+
+        // Calculate new approach
+        dynamicPlaceApproachL[0]+=dx;
+        dynamicPlaceApproachL[1]+=dy;
+        std::cout << "New location:" << std::endl;
+        printArray(dynamicPlaceApproachL);
+
     }
     // ur_robot->stopScript(); // Stops further actions
 }
@@ -303,7 +320,7 @@ void Plugin::moveToJ(std::vector<double> goal, double acceleration, double veloc
     ur_robot->moveJ(goal, acceleration, velocity);
 }
 
-void Plugin::moveToPick()
+void Plugin::moveToForce(int mode)
 {
     if(!ur_robot_exists)
     {
@@ -318,61 +335,37 @@ void Plugin::moveToPick()
     }
 
     std::cout << "Moving to pick location..." << std::endl;
-    std::vector<double> approach = pickApproachL; // = { -0.313509, -0.493764, 0.407642, 1.74502, -2.61216, 0.000178952 };
-    std::vector<std::vector<double>> path;
-    std::vector<double> force_direction = {0.0,0.0,0.0};
+    //std::vector<double> pickL = { -0.313482, -0.493764, 0.14425, 1.7451, -2.61215, 0.000203642 };
+    //std::vector<double> pickJ = { -0.313482, -0.493764, 0.14425, 1.7451, -2.61215, 0.000203642 };
 
-    for(int i = 0; i<20; i++)
+    // Forcemode parameters
+    std::vector<double> task_frame = {0, 0, 0, 0, 0, 0};
+    std::vector<int> selection_vector = {0, 0, 1, 0, 0, 0};
+    std::vector<double> wrench_down = {0, 0, -50, 0, 0, 0};
+    std::vector<double> limits = {2, 2, 10, 1, 1, 1};
+    int force_type = 2;
+    double dt = 1.0/2000; // 2ms
+
+    for(int i = 0; i < 10000; i++)
     {
-        ur_robot->moveL(approach,0.1,1.2);
-        approach[2] -= 0.01;
+        if(ur_robot_receive->getActualTCPForce()[2]>2)
+            break;
 
-        //std::cout << ur_robot->toolContact(force_direction) << std::endl;
+        auto t_start = std::chrono::high_resolution_clock::now();                           // Move time start
+        ur_robot->forceMode(task_frame, selection_vector, wrench_down, force_type,limits);  // Move
+        auto t_stop = std::chrono::high_resolution_clock::now();                            // Move time stop
+        auto t_duration = std::chrono::duration<double>(t_stop - t_start);                  // Move duration
+
+        // If move was shorter than timestep dt, sleep until sync
+        if (t_duration.count() < dt)
+          std::this_thread::sleep_for(std::chrono::duration<double>(dt - t_duration.count()));
     }
+    ur_robot->forceModeStop();
 
-    /*if(ur_robot->toolContact({0,0,-1}))
-        break;*/
-
-    //std::cout << ur_robot -> toolContact({0,0,-1}) << std::endl;
-    /*
-    if(ur_robot->toolContact({0,0,-1}))
-        break;*/
-
-    //std::cout << "Moving back up..." << std::endl;
-    //ur_robot->moveL(pickApproachL,0.1,0.1,true);
-    //return;
-}
-
-void Plugin::moveToPlace()
-{
-    if(!ur_robot_exists)
-    {
-        std::cout << "Robot not connected..." << std::endl;
-        return;
-    }
-
-    if(ur_robot_teach_mode)
-    {
-        std::cout << "Teach mode enabled..." << std::endl;
-        return;
-    }
-
-    std::cout << "Moving slowly down.." << std::endl;
-    std::vector<double> grip = addMove(placeQ, 0.2, 0.2);
-    std::vector<double> home = addMove(placeApproachQ, 0.2, 0.2);
-
-    std::vector<std::vector<double>> path;
-
-    path.clear();
-    ur_robot_io->setStandardDigitalOut(0,CLOSE);
-    path.push_back(grip);
-    ur_robot->moveJ(path);
-
-    // Open and move up
-    ur_robot_io->setStandardDigitalOut(0,OPEN);
-    path.clear();
-    path.push_back(home);
-    ur_robot->moveJ(path);
+    // Grip
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ur_robot_io->setStandardDigitalOut(0,mode);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 void Plugin::RunHomeRobot()

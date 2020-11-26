@@ -30,10 +30,11 @@
 #include <thread>
 #include <utility>
 #include <chrono>
+#include <cmath>
 
 // Extra defines for robot gripper
-#define OPEN true
-#define CLOSE false
+#define OPEN false
+#define CLOSE true
 
 class QPushButton;
 
@@ -59,8 +60,7 @@ private slots:
     void RunRobotMimic();
     void RunRobotControl();
     void RunHomeRobot();
-    void moveToPick();
-    void moveToPlace();
+    void moveToForce(int mode);
     void moveToJ(std::vector<double>, double, double);
     void printLocation();
 
@@ -109,6 +109,9 @@ private:
     std::vector<double> placeApproachQ =   { 1.74693, -1.08593, 1.66241, -2.14615, -1.56947, -0.999986 };
     std::vector<double> placeApproachL =   { 0.241712, -0.593151, 0.224805, -1.7459, 2.61178, 0.00491445 };
     std::vector<double> placeQ =   { 1.81889, -1.15219, 1.91062, -2.26603, -1.53601, -0.886415 };
+
+    // placeapproachnew = { 1.80115, -1.16677, 1.78845, -2.19129, -1.56914, -0.94587 };
+    //placeapproachtcpnew = { 0.264005, -0.539257, 0.224905, 1.74592, -2.61175, -0.00491615 };
 
 
 // q location for rebars, with 3 reabrs in it Q[6]{0.762658, -0.972519, 1.91634, -2.51089, -1.5408, -1.98513}
