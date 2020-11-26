@@ -45,6 +45,14 @@
         <Property name="Camera" desc="[fovy,width,height]">50 640 480</Property>
     </Frame>
 
+    <Frame name="Wall" refframe="WORLD" type="Fixed">
+        <RPY>0 0 0</RPY> <Pos>0.2 0.2 0</Pos>		
+        <Drawable name="Wall" refframe="Table">
+            <Polytope file="objects/Wall/wall_0.01.stl" />
+        </Drawable>
+    </Frame>
+
+
     <CollisionSetup file="SceneCollisionSetup.prox.xml" />
 
 </WorkCell>
