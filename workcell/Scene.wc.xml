@@ -52,6 +52,15 @@
 	  </Drawable>
 	 </Frame>
 
+	
+    	<!-- Rebar -->
+
+	<Frame name="Rebar" refframe="Table" type="Fixed">
+	   <RPY> 0 0 0</RPY> <Pos> 0.26965 -0.05 0.13 </Pos>
+	  <Drawable name="RebarDrawable">
+	   <Polytope file="objects/straight_rod.obj"/>
+	  </Drawable>
+	 </Frame>
 
 	<!-- Magazine -->
 
@@ -63,7 +72,7 @@
 	 </Frame>
 
 
-	<!-- Camera -->
+	<!-- Camera 
 
     <Frame name="Scanner25D" refframe="UR5e_2018.Flange" type="Movable">
 	    <Pos>0 -0.06 -0.035</Pos>
@@ -82,7 +91,7 @@
         <Pos>0 -0.06 -0.035</Pos>
         <RPY>0 0 180</RPY>
         <Property name="Camera" desc="[fovy,width,height]">50 640 480</Property>
-    </Frame>
+    </Frame> -->
 
 	<!-- Collision -->
 
