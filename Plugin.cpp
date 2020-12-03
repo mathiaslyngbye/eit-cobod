@@ -58,6 +58,10 @@ Plugin::Plugin():
     pLayout->addWidget(_btn_teach, row++, 0);
     connect(_btn_teach, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
+    _btn_attach = new QPushButton("Attach rebar");
+    pLayout->addWidget(_btn_attach, row++, 0);
+    connect(_btn_attach, SIGNAL(clicked()), this, SLOT(clickEvent()));
+
     // Vision
     QLabel *label_vision = new QLabel(this);
     label_vision->setText("Vision");
@@ -98,8 +102,11 @@ void Plugin::open(rw::models::WorkCell* workcell)
     {
         // Get rws info
         rws_wc = workcell;
-        rws_state = rws_wc->getDefaultState();
-        rws_robot = rws_wc->findDevice<rw::models::SerialDevice>("UR5e_2018");
+        rws_state       = rws_wc->getDefaultState();
+        rws_robot       = rws_wc->findDevice<rw::models::SerialDevice>("UR5e_2018");
+        rws_rebar       = rws_wc->findFrame<rw::kinematics::MovableFrame>("Rebar");
+        rws_robot_tcp   = rws_wc->findFrame<rw::kinematics::Frame>("GraspTCP");
+        rws_table       = rws_wc->findFrame<rw::kinematics::Frame>("Table");
 
         if(rws_robot == NULL)
         {
@@ -157,6 +164,8 @@ void Plugin::clickEvent()
         printLocation();
     else if(obj == _btn_zero)
         zeroSensor();
+    else if(obj == _btn_attach)
+        attachObject();
     else if(obj == _btn_image)
         get25DImage();
 }
@@ -244,7 +253,22 @@ void Plugin::RunRobotControl()
 
         // Grip
         moveToForce(CLOSE);
+        attachObject();
         ur_robot->moveL(pickApproachL,0.8,0.8);
+
+        /*
+        // RRT Between points
+        std::vector<std::vector<double>> path;
+        std::vector<double> fromQ = ur_robot_receive->getActualQ();
+        std::vector<double> toQ = invKin(dynamicPlaceApproachL);
+        rw::kinematics::State tmp_state = rws_state.clone();
+
+        createPathRRTConnect(fromQ, toQ, 0.05, 0.8, 0.8, path, tmp_state);
+
+        std::cout << "Moving robot..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        ur_robot->moveJ(path);
+        */
 
         // Move home
         moveToJ(homeQ,0.8,0.8);
@@ -252,8 +276,9 @@ void Plugin::RunRobotControl()
         // Move to place approach
         ur_robot->moveL(dynamicPlaceApproachL,0.8,0.8);
 
-        // Ungrip
+        // Place
         moveToForce(OPEN);
+        resetObject();
         ur_robot->moveL(dynamicPlaceApproachL,0.8,0.8);
 
         // Move home
@@ -344,6 +369,39 @@ void Plugin::zeroSensor()
     std::cout << "Done!" << std::endl;
 }
 
+void Plugin::attachObject()
+{
+     rw::kinematics::State tmp_state = rws_state.clone();
+
+     // Attach rebar to TCP
+     rws_rebar->setTransform(
+                 rw::math::Transform3D<>(
+                     rw::math::Vector3D<>(0, 0.05, 0),
+                     rw::math::RPY<>(0, 0, 0)),
+             tmp_state
+             );
+     rws_rebar->attachTo(rws_robot_tcp.get(), tmp_state);
+
+     getRobWorkStudio()->setState(tmp_state);
+}
+
+void Plugin::resetObject()
+{
+     rw::kinematics::State tmp_state = rws_state.clone();
+
+     // Attach rebar to Table
+     rws_rebar->setTransform(
+                 rw::math::Transform3D<>(
+                     rw::math::Vector3D<>(0.26965, -0.05, 0.13),
+                     rw::math::RPY<>(0, 0, 0)),
+             tmp_state
+             );
+     rws_rebar->attachTo(rws_table.get(), tmp_state);
+
+     getRobWorkStudio()->setState(tmp_state);
+}
+
+
 void Plugin::moveToJ(std::vector<double> goal, double acceleration, double velocity)
 {
     if(!ur_robot_exists)
@@ -427,14 +485,29 @@ void Plugin::RunHomeRobot()
     std::cout << "Homing robot..." << std::endl;
 
     std::vector<std::vector<double>> path;
+    std::cout << "> Getting from Q" << std::endl;
     std::vector<double> fromQ = ur_robot_receive->getActualQ();
-    std::vector<double> toQ = homeQ;
-    rw::kinematics::State tmp_state = rws_state;
+    std::cout << "> Getting to Q" << std::endl;
+    std::vector<double> toQ = homeQ; //invKin(homeTCP);
+    std::cout << "> Cloning state" << std::endl;
 
-    createPathRRTConnect(fromQ, toQ, 0.05, path, tmp_state);
+    rw::kinematics::State tmp_state = rws_state.clone();
+
+    printArray(fromQ);
+    printArray(toQ);
+
+    std::cout << "> Running RRT" << std::endl;
+    createPathRRTConnect(fromQ, toQ, 0.05, 0.8, 0.8, path, tmp_state);
 
     std::cout << "Moving robot..." << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    for(int i = 0; i < path.size(); i++)
+    {
+        printArray(path[i]);
+    }
+
+    path.clear();
+    path.push_back(addMove(fromQ,0.5,0.5));
+    path.push_back(addMove(homeQ,0.5,0.5));
     ur_robot->moveJ(path);
 }
 
@@ -457,7 +530,7 @@ void Plugin::printArray(std::vector<double> input)
     std::cout << input[input.size()-1] << " }" << std::endl;
 }
 
-void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> to, double epsilon, std::vector<std::vector<double>> &path, rw::kinematics::State state)
+void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> to, double epsilon, double velocity, double acceleration, std::vector<std::vector<double>> &path, rw::kinematics::State state)
 {
     rw::pathplanning::PlannerConstraint constraint = rw::pathplanning::PlannerConstraint::make(collisionDetector.get(), rws_robot, state);
     rw::pathplanning::QSampler::Ptr sampler = rw::pathplanning::QSampler::makeConstrained(rw::pathplanning::QSampler::makeUniform(rws_robot), constraint.getQConstraintPtr());
@@ -473,9 +546,32 @@ void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> 
     for(const auto &q : qpath)
     {
         std::vector<double> q_copy = q.toStdVector();
-        path.push_back(addMove(q_copy, 0.5, 0.5));
+        path.push_back(addMove(q_copy, velocity, acceleration));
     }
 }
+
+std::vector<double> Plugin::invKin(std::vector<double> goalL)
+{
+    rw::kinematics::State tmp_state = rws_state.clone();
+    const rw::invkin::ClosedFormIKSolverUR solver(rws_robot, tmp_state);
+
+    const rw::math::Transform3D<> Tdesired(
+            rw::math::Vector3D<>(goalL[0], goalL[1], goalL[2]),
+            rw::math::RPY<>(goalL[3], goalL[4], goalL[5]));
+
+    const std::vector<rw::math::Q> solutions = solver.solve(Tdesired, tmp_state);
+
+    // Use first solution (SHOULD USE SHORTEST CONFIG DISTANCE
+    for(unsigned int i=0; i<solutions.size(); i++)
+    {
+        if( !collisionDetector->inCollision(tmp_state,NULL,true) )
+        {
+            return solutions[i].toStdVector();
+        }
+    }
+}
+
+
 
 void Plugin::get25DImage()
 {
@@ -486,7 +582,7 @@ void Plugin::get25DImage()
     getRobWorkStudio()->setState(rws_state);
     if (_framegrabber25D != NULL)
     {
-        for( int i = 0; i < _cameras25D.size(); i ++)
+        for(size_t i = 0; i < _cameras25D.size(); i ++)
         {
             // Get the image as a RW image
             rw::kinematics::Frame* cameraFrame25D = rws_wc->findFrame(_cameras25D[i]); // "Camera");

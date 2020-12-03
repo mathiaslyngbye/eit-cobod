@@ -72,6 +72,9 @@ private slots:
     void startHomeRobot();
 
     // Manage
+    std::vector<double> invKin(std::vector<double>);
+    void attachObject();
+    void resetObject();
     void connectRobot();
     void zeroSensor();
     void stopRobot();
@@ -85,17 +88,21 @@ private slots:
     void get25DImage();
 
     // Planning
-    void createPathRRTConnect(std::vector<double>, std::vector<double>, double, std::vector<std::vector<double>>&, rw::kinematics::State);
+    void createPathRRTConnect(std::vector<double>, std::vector<double>, double, double, double, std::vector<std::vector<double>>&, rw::kinematics::State);
 
 private:
     // Qt buttons
-    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image;
+    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach;
 
     // RobWorkStudio interface
     rw::proximity::CollisionDetector::Ptr collisionDetector;
     rw::models::WorkCell::Ptr rws_wc;
     rw::kinematics::State rws_state;
-    rw::models::Device::Ptr rws_robot;
+    rw::models::SerialDevice::Ptr rws_robot;
+    rw::kinematics::MovableFrame::Ptr rws_rebar;
+    rw::kinematics::Frame::Ptr rws_robot_tcp;
+    rw::kinematics::Frame::Ptr rws_table;
+
 
     // UR interface
     std::string ur_robot_ip = "192.168.0.212";
@@ -115,6 +122,8 @@ private:
     std::vector<double> placeApproachQ =   { 1.74693, -1.08593, 1.66241, -2.14615, -1.56947, -0.999986 };
     std::vector<double> placeApproachL =   { 0.241712, -0.593151, 0.224805, -1.7459, 2.61178, 0.00491445 };
     std::vector<double> placeQ =   { 1.81889, -1.15219, 1.91062, -2.26603, -1.53601, -0.886415 };
+
+    std::vector<double> rebarL =  { 0.26965, -0.05, 0.13, 0, 0, 0 };
 
     //Vision
     rwlibs::simulation::GLFrameGrabber25D* _framegrabber25D;
