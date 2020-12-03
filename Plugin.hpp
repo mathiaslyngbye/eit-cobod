@@ -25,6 +25,7 @@
 // Qt includes
 #include <QPushButton>
 #include <QGridLayout>
+#include <QLabel>
 
 // Standard includes
 #include <iostream>
@@ -88,7 +89,7 @@ private slots:
 
 private:
     // Qt buttons
-    QPushButton *_btn0,*_btn1,*_btn2,*_btn3,*_btn4, *_btn5, *_btn6, *_btn7, *_btn8, *_btn9, *_btn10, *_btn11, *_btn12;
+    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image;
 
     // RobWorkStudio interface
     rw::proximity::CollisionDetector::Ptr collisionDetector;
