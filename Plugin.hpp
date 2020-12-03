@@ -72,6 +72,7 @@ private slots:
 
     // Manage
     void connectRobot();
+    void zeroSensor();
     void stopRobot();
     void teachModeToggle();
 
@@ -87,7 +88,7 @@ private slots:
 
 private:
     // Qt buttons
-    QPushButton *_btn0,*_btn1,*_btn2,*_btn3,*_btn4, *_btn5, *_btn6, *_btn7, *_btn8, *_btn9, *_btn10, *_btn11;
+    QPushButton *_btn0,*_btn1,*_btn2,*_btn3,*_btn4, *_btn5, *_btn6, *_btn7, *_btn8, *_btn9, *_btn10, *_btn11, *_btn12;
 
     // RobWorkStudio interface
     rw::proximity::CollisionDetector::Ptr collisionDetector;

@@ -55,9 +55,13 @@ Plugin::Plugin():
     pLayout->addWidget(_btn10, row++, 0);
     connect(_btn10, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn11 = new QPushButton("Get 25DImage");
+    _btn11 = new QPushButton("Calibration");
     pLayout->addWidget(_btn11, row++, 0);
     connect(_btn11, SIGNAL(clicked()), this, SLOT(clickEvent()));
+
+    _btn12 = new QPushButton("Get 25DImage");
+    pLayout->addWidget(_btn12, row++, 0);
+    connect(_btn12, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
 
     pLayout->setRowStretch(row,1);
@@ -151,6 +155,8 @@ void Plugin::clickEvent()
     else if(obj == _btn10)
         moveToForce(OPEN);
     else if(obj == _btn11)
+        zeroSensor();
+    else if(obj == _btn12)
         get25DImage();
 }
 
@@ -220,15 +226,17 @@ void Plugin::RunRobotControl()
     double dx = d*sin(theta);
     std::cout << "c=" << 0.05 << "\tdy=" << dy << "\tdx=" << dx << std::endl;
 
+    // Home robot and calibrate before start
+    moveToJ(homeQ,0.8,0.8);
+    ur_robot_io->setStandardDigitalOut(0,OPEN);
+    zeroSensor();
+    ur_robot->setPayload(0.2);
+
     ur_robot_stopped = false;
     for(int i = 0; i<4; i++)
     {
         if(ur_robot_stopped)
             break;
-
-        // Move home
-        moveToJ(homeQ,0.8,0.8);
-        ur_robot_io->setStandardDigitalOut(0,OPEN);
 
         // Move to pick approach
         moveToJ(pickApproachQ, 0.8, 0.8);
@@ -326,6 +334,13 @@ void Plugin::stopRobot()
     ur_robot->stopL();
     ur_robot->stopJ();
     ur_robot_stopped = true;
+}
+
+void Plugin::zeroSensor()
+{
+    std::cout << "Calibrating..." << std::endl;
+    ur_robot->zeroFtSensor();
+    std::cout << "Done!" << std::endl;
 }
 
 void Plugin::moveToJ(std::vector<double> goal, double acceleration, double velocity)
