@@ -101,6 +101,7 @@ private:
     rw::models::SerialDevice::Ptr rws_robot;
     rw::kinematics::MovableFrame::Ptr rws_rebar;
     rw::kinematics::Frame::Ptr rws_robot_tcp;
+    rw::kinematics::Frame::Ptr rws_robot_base;
     rw::kinematics::Frame::Ptr rws_table;
 
 
@@ -115,6 +116,7 @@ private:
     std::vector<double> gripTCP =   { -0.15573, -0.52874,  0.17813,  1.77626, -2.57197,  0.04202 };
     std::vector<double> homeQ =     {  1.17810, -1.57080,  1.57080, -1.57080, -1.57080, -1.57080 };
     std::vector<double> homeTCP =   { -0.06489, -0.50552,  0.48784, -1.74588,  2.61176,  0.00493 };
+    std::vector<double> homeTCP_new =   { 0.6, -0.8,  0.2, 0,  0,  3.14};
 
     std::vector<double> pickApproachQ = { 0.773998, -1.3719, 1.55647, -1.7573, -1.56807, -1.97355 };
     std::vector<double> pickApproachL = { -0.313509, -0.493764, 0.407642, 1.74502, -2.61216, 0.000178952 };

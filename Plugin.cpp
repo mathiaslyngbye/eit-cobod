@@ -106,6 +106,7 @@ void Plugin::open(rw::models::WorkCell* workcell)
         rws_robot       = rws_wc->findDevice<rw::models::SerialDevice>("UR5e_2018");
         rws_rebar       = rws_wc->findFrame<rw::kinematics::MovableFrame>("Rebar");
         rws_robot_tcp   = rws_wc->findFrame<rw::kinematics::Frame>("GraspTCP");
+        rws_robot_base  = rws_wc->findFrame<rw::kinematics::Frame>("UR5e_2018.Base");
         rws_table       = rws_wc->findFrame<rw::kinematics::Frame>("Table");
 
         if(rws_robot == NULL)
@@ -470,29 +471,18 @@ void Plugin::moveToForce(int mode)
 
 void Plugin::RunHomeRobot()
 {
-    if(!ur_robot_exists)
-    {
-        std::cout << "Robot not connected..." << std::endl;
-        return;
-    }
-
-    if(ur_robot_teach_mode)
-    {
-        std::cout << "Teach mode enabled..." << std::endl;
-        return;
-    }
-
     std::cout << "Homing robot..." << std::endl;
 
     std::vector<std::vector<double>> path;
-    std::cout << "> Getting from Q" << std::endl;
-    std::vector<double> fromQ = ur_robot_receive->getActualQ();
-    std::cout << "> Getting to Q" << std::endl;
-    std::vector<double> toQ = homeQ; //invKin(homeTCP);
-    std::cout << "> Cloning state" << std::endl;
+    //std::vector<double> fromQ = ur_robot_receive->getActualQ();
+    std::vector<double> toQ = invKin(homeTCP_new);
 
     rw::kinematics::State tmp_state = rws_state.clone();
 
+    rws_robot->setQ(toQ, tmp_state);
+    getRobWorkStudio()->setState(tmp_state);
+
+    /*
     printArray(fromQ);
     printArray(toQ);
 
@@ -509,10 +499,13 @@ void Plugin::RunHomeRobot()
     path.push_back(addMove(fromQ,0.5,0.5));
     path.push_back(addMove(homeQ,0.5,0.5));
     ur_robot->moveJ(path);
+    */
 }
 
 void Plugin::printLocation()
 {
+    printArray(rws_robot->getQ(rws_state).toStdVector());
+    /*
     std::cout << "JOINT POSE:" << std::endl;
     std::vector<double> actualQ=ur_robot_receive->getActualQ();
     printArray(actualQ);
@@ -520,6 +513,7 @@ void Plugin::printLocation()
     std::cout << "TCP POSE:" << std::endl;
     std::vector<double> actualL=ur_robot_receive->getActualTCPPose();
     printArray(actualL);
+    */
 }
 
 void Plugin::printArray(std::vector<double> input)
@@ -552,26 +546,39 @@ void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> 
 
 std::vector<double> Plugin::invKin(std::vector<double> goalL)
 {
+    // Duplicate state
     rw::kinematics::State tmp_state = rws_state.clone();
+
+    // Create solver
     const rw::invkin::ClosedFormIKSolverUR solver(rws_robot, tmp_state);
+
+    // Create goal transform object
+    std::cout << "Goal (TCP):" << std::endl;
+    printArray(goalL);
+
+    const rw::math::Transform3D<> homeT = rws_robot_base->wTf(tmp_state);
 
     const rw::math::Transform3D<> Tdesired(
             rw::math::Vector3D<>(goalL[0], goalL[1], goalL[2]),
             rw::math::RPY<>(goalL[3], goalL[4], goalL[5]));
 
-    const std::vector<rw::math::Q> solutions = solver.solve(Tdesired, tmp_state);
+    const rw::math::Transform3D<> Tdesired_wtf = Tdesired*homeT;
 
-    // Use first solution (SHOULD USE SHORTEST CONFIG DISTANCE
-    for(unsigned int i=0; i<solutions.size(); i++)
+    const std::vector<rw::math::Q> solutions = solver.solve(Tdesired_wtf, tmp_state);
+    std::cout << "Found " << solutions.size() << " inverse kinematic solutions!" << std::endl;
+
+    // Use first solution (SHOULD USE SHORTEST CONFIG DISTANCE)
+    for(const auto &solution : solutions)
     {
+        rws_robot->setQ(solution, tmp_state);
+        //getRobWorkStudio()->setState(tmp_state);
         if( !collisionDetector->inCollision(tmp_state,NULL,true) )
         {
-            return solutions[i].toStdVector();
+            printArray(solution.toStdVector());
+            return solution.toStdVector();
         }
     }
 }
-
-
 
 void Plugin::get25DImage()
 {
