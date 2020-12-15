@@ -50,12 +50,19 @@ set(CMAKE_AUTOUIC ON)
 # RTDE
 find_package(ur_rtde REQUIRED)
 
+# PCL
+find_package(PCL 1.7 REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
+
 # Add the source files to build
 set(SrcFiles Plugin.cpp Plugin.hpp Plugin.json resources.qrc)
 
 # The shared library to build:
 add_library(Plugin MODULE ${SrcFiles})
-target_link_libraries(Plugin PUBLIC ${ROBWORKSTUDIO_LIBRARIES} ${ROBWORK_LIBRARIES} PRIVATE ur_rtde::rtde)
+target_link_libraries(Plugin PUBLIC ${ROBWORKSTUDIO_LIBRARIES} ${ROBWORK_LIBRARIES} ${PCL_LIBRARIES} PRIVATE ur_rtde::rtde)
 target_include_directories(Plugin PUBLIC ${ROBWORKSTUDIO_INCLUDE_DIRS} ${ROBWORK_INCLUDE_DIRS})
 
 message("-- " ${PROJECT_NAME} " done!")
