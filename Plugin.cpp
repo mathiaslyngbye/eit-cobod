@@ -28,6 +28,10 @@ Plugin::Plugin():
     pLayout->addWidget(_btn_stop_sync, row++, 0);
     connect(_btn_stop_sync, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
+    _btn_generate_route = new QPushButton("Generate polyline route");
+    pLayout->addWidget(_btn_generate_route, row++, 0);
+    connect(_btn_generate_route, SIGNAL(clicked()), this, SLOT(clickEvent()));
+
     // Movement/Control
     QLabel *label_control = new QLabel(this);
     label_control->setText("Control");
@@ -37,7 +41,7 @@ Plugin::Plugin():
     pLayout->addWidget(_btn_control, row++, 0);
     connect(_btn_control, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn_control2 = new QPushButton("Start robot control (route)");
+    _btn_control2 = new QPushButton("Run polyline route");
     pLayout->addWidget(_btn_control2, row++, 0);
     connect(_btn_control2, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
@@ -86,6 +90,7 @@ Plugin::Plugin():
     ur_robot_teach_mode = false;
     ur_robot_stopped = true;
     rws_robot_synced = false;
+    has_polyline_route = false;
 
     //Initialize camera vector
     _cameras25D = {"Scanner25D"};
@@ -162,6 +167,8 @@ void Plugin::clickEvent()
         connectRobot();
     else if(obj == _btn_sync)
         startRobotMimic();
+    else if(obj == _btn_generate_route)
+        generatePythonRoute();
     else if(obj == _btn_control)
         startRobotControl();
     else if(obj == _btn_control2)
@@ -222,9 +229,16 @@ std::vector<double> Plugin::addMove(std::vector<double> position, double acceler
     return position_and_move;
 }
 
-void Plugin::generatePythonRoute(std::vector<std::vector<double>> &route)
+void Plugin::generatePythonRoute()
 {
+    // Generate CSV file
+    system("/usr/bin/python3 ../polyline/polyline_EIT.py 0.15 0.3");
+    has_polyline_route = true;
 
+}
+
+void Plugin::importPythonRoute(std::vector<std::vector<double>> &route)
+{
     // Read CSV file
     ifstream in("poses.csv");
     std::vector<std::vector<double>> route_raw;
@@ -251,21 +265,6 @@ void Plugin::generatePythonRoute(std::vector<std::vector<double>> &route)
     {
         printArray(point);
     }
-
-
-
-    /*
-    std::vector<std::vector<double>> route_raw =
-    {
-        {-0.4,0.008225806451612916,1.5542689061921757},
-        {-0.4,0.10821214898091279,1.5542689061921757},
-        {-0.4,0.20819849151021266,1.5542689061921757},
-        {-0.4,0.3081848340395126,1.5542689061921757},
-        {-0.4,0.4081711765688124,1.5542689061921757},
-        {-0.4,0.5081575190981122,1.5542689061921757}
-    };
-    */
-
 
     // Transform and export path
     route.clear();
@@ -377,8 +376,15 @@ void Plugin::RunRobotControlRoute()
         return;
     }
 
-    std::vector<std::vector<double>> route;
-    generatePythonRoute(route);
+    if(!has_polyline_route)
+    {
+        std::cout << "No polyline route generated..." << std::endl;
+        return;
+    }
+
+    // Import route
+    std::vector<std::vector<double>> polyline_route;
+    importPythonRoute(polyline_route);
 
     // Home robot and calibrate before start
     moveToJ(homeQ,0.8,0.8);
@@ -387,7 +393,7 @@ void Plugin::RunRobotControlRoute()
     ur_robot->setPayload(0.2);
 
     ur_robot_stopped = false;
-    for(int i = 0; i<route.size(); i++)
+    for(int i = 0; i<polyline_route.size(); i++)
     {
         if(ur_robot_stopped)
             break;
@@ -403,7 +409,7 @@ void Plugin::RunRobotControlRoute()
         // RRT Between points
         std::vector<std::vector<double>> path;
         std::vector<double> fromQ = ur_robot_receive->getActualQ();
-        std::vector<double> toQ = invKin(fromQ,route[i]);
+        std::vector<double> toQ = invKin(fromQ,polyline_route[i]);
         rw::kinematics::State tmp_state = rws_state.clone();
         createPathRRTConnect(fromQ, toQ, 0.05, 0.4, 0.4, 0.02, path, tmp_state);
         path.push_back(addMove(toQ, 0.4, 0.4, 0));
@@ -615,7 +621,7 @@ void Plugin::moveToForce(int mode)
 void Plugin::RunHomeRobot()
 {
     std::vector<std::vector<double>> route;
-    generatePythonRoute(route);
+    //generatePythonRoute(route);
     printArray(route[0]);
 
     std::cout << "Homing robot..." << std::endl;

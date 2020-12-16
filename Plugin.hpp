@@ -84,7 +84,8 @@ private slots:
     void moveToForce(int mode);
     void moveToJ(std::vector<double>, double, double);
     void printLocation();
-    void generatePythonRoute(std::vector<std::vector<double>>&);
+    void generatePythonRoute();
+    void importPythonRoute(std::vector<std::vector<double>>&);
 
     // Start thread
     void startRobotMimic();
@@ -118,7 +119,7 @@ private slots:
 
 private:
     // Qt buttons
-    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach, *_btn_stop_sync, *_btn_control2;
+    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach, *_btn_stop_sync, *_btn_control2,*_btn_generate_route;
 
     // Base shift
     double theta = 22.5 * (M_PI / 180);
@@ -132,7 +133,6 @@ private:
     rw::kinematics::Frame::Ptr rws_robot_tcp;
     rw::kinematics::Frame::Ptr rws_robot_base;
     rw::kinematics::Frame::Ptr rws_table;
-
 
     // UR interface
     std::string ur_robot_ip = "192.168.0.212";
@@ -166,11 +166,13 @@ private:
     std::atomic_bool ur_robot_stopped;
     std::atomic_bool ur_robot_teach_mode;
     std::atomic_bool rws_robot_synced;
+    std::atomic_bool has_polyline_route;
 
     // Threads
     std::thread control_thread;
     std::thread update_thread;
     std::thread home_thread;
+
 };
 
 #endif /*PLUGIN_HPP*/
