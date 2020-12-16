@@ -60,14 +60,9 @@
 	
     	<!-- Rebar -->
 
-<<<<<<< HEAD
+
 	<Frame name="Rebar" refframe="Table" type="Fixed">
-	   <RPY> 0 0 0</RPY> <Pos> 0.297 -0.099 0.13 </Pos>
-				   
-=======
-	<Frame name="Rebar" refframe="Table"  type="Movable" daf="true">
-	   <RPY> 0 0 0</RPY> <Pos> 0.26965 -0.05 0.13 </Pos>
->>>>>>> cc5f9d79acc690a4e72e3482d007c578ea3ae63a
+	   <RPY> 0 0 0</RPY> <Pos> 0.297 -0.099 0.126 </Pos>
 	  <Drawable name="RebarDrawable">
 	   <Polytope file="objects/302rod.obj"/>
 	  </Drawable>
@@ -91,21 +86,14 @@
 	    <Property name="Scanner25D" desc="[fovy,width,height]">50 640 480</Property>
     </Frame>
 
-<<<<<<< HEAD
+
 	<!--<Frame name="ScannerDrawable" refframe="Scanner25D" type="Movable">
         <RPY>0 0 -90</RPY> <Pos>0 0 0.025</Pos>		
         <Drawable name="ScannerDrawable" refframe="Table">
             <Polytope file="objects/camera/camera.stl" />
         </Drawable>
 	</Frame>-->
-=======
-   <Frame name="ScannerDrawable" refframe="Scanner25D" type="Movable">
-	<RPY>0 0 -90</RPY> <Pos>0 0 0.025</Pos>		
-	<Drawable name="ScannerDrawable" refframe="Table">
-	    <Polytope file="objects/camera/camera.stl" />
-	</Drawable>
-   </Frame>
->>>>>>> cc5f9d79acc690a4e72e3482d007c578ea3ae63a
+
 
     <Frame name="Camera" refframe="UR5e_2018.Flange" type="Movable">
         <Pos>0 -0.06 -0.035</Pos>
