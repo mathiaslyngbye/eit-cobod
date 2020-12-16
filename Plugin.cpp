@@ -271,10 +271,11 @@ void Plugin::RunRobotControl()
         std::vector<double> toQ = invKin(fromQ,dynamicPlaceApproachL);
         rw::kinematics::State tmp_state = rws_state.clone();
         createPathRRTConnect(fromQ, toQ, 0.05, 0.4, 0.4, 0.02, path, tmp_state);
+        path.push_back(addMove(toQ, 0.4, 0.4, 0));
 
         std::cout << "Moving robot..." << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
         ur_robot->moveJ(path);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
         // Move home
         //moveToJ(homeQ,0.8,0.8);
@@ -557,14 +558,16 @@ void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> 
     for(const auto &q : qpath)
     {
         std::vector<double> q_copy = q.toStdVector();
-        if(index < qpath.size()-1)
+        if(index < qpath.size()-2)
         {
             path.push_back(addMove(q_copy, velocity, acceleration, blend));
+            std::cout << "This is not last point" << std::endl;
         }
         else
         {
             path.push_back(addMove(q_copy, velocity, acceleration, 0));
-            std::cout << "Doing last point..." << std::endl;
+            std::cout << "This is last point" << std::endl;
+            //printArray(q.toStdVector());
         }
         index++;
     }

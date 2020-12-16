@@ -69,7 +69,7 @@
 
 
 	<Frame name="Rebar" refframe="Table" type="Movable"  daf="true">
-	   <RPY> 0 0 0</RPY> <Pos> 0.297 -0.099 0.126 </Pos>
+	   <RPY> 0 0 0</RPY> <Pos> 0.297 -0.099 0.13 </Pos>
 	  <Drawable name="RebarDrawable">
 	   <Polytope file="objects/302rod.obj"/>
 	  </Drawable>
