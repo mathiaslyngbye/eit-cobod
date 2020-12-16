@@ -79,14 +79,17 @@ private slots:
     // Functions
     void RunRobotMimic();
     void RunRobotControl();
+    void RunRobotControlRoute();
     void RunHomeRobot();
     void moveToForce(int mode);
     void moveToJ(std::vector<double>, double, double);
     void printLocation();
+    void generatePythonRoute(std::vector<std::vector<double>>&);
 
     // Start thread
     void startRobotMimic();
     void startRobotControl();
+    void startRobotControlRoute();
     void startHomeRobot();
 
     // Manage
@@ -115,7 +118,10 @@ private slots:
 
 private:
     // Qt buttons
-    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach, *_btn_stop_sync;
+    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach, *_btn_stop_sync, *_btn_control2;
+
+    // Base shift
+    double theta = 22.5 * (M_PI / 180);
 
     // RobWorkStudio interface
     rw::proximity::CollisionDetector::Ptr collisionDetector;
@@ -146,7 +152,7 @@ private:
     std::vector<double> pickQ =  { 0.762658, -0.972519, 1.91634, -2.51089, -1.5408, -1.98513 };
     std::vector<double> placeApproachQ =   { 1.74693, -1.08593, 1.66241, -2.14615, -1.56947, -0.999986 };
     std::vector<double> placeApproachL =   { 0.241712, -0.593151, 0.224805, -1.7459, 2.61178, 0.00491445 };
-    std::vector<double> placeApproachL_RW =   { 0.5, -0.65, 0.25, 0, 0, -3.14159 };
+    std::vector<double> placeApproachL_RW =   { 0.45, -0.4, 0.25, -1.5708, 0, -3.14159 };
     std::vector<double> placeQ =   { 1.81889, -1.15219, 1.91062, -2.26603, -1.53601, -0.886415 };
 
     std::vector<double> rebarL =  { 0.26965, -0.05, 0.13, 0, 0, 0 };

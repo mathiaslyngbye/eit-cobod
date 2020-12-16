@@ -37,6 +37,10 @@ Plugin::Plugin():
     pLayout->addWidget(_btn_control, row++, 0);
     connect(_btn_control, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
+    _btn_control2 = new QPushButton("Start robot control (route)");
+    pLayout->addWidget(_btn_control2, row++, 0);
+    connect(_btn_control2, SIGNAL(clicked()), this, SLOT(clickEvent()));
+
     _btn_stop = new QPushButton("Stop robot");
     pLayout->addWidget(_btn_stop, row++, 0);
     connect(_btn_stop, SIGNAL(clicked()), this, SLOT(clickEvent()));
@@ -160,6 +164,8 @@ void Plugin::clickEvent()
         startRobotMimic();
     else if(obj == _btn_control)
         startRobotControl();
+    else if(obj == _btn_control2)
+        startRobotControlRoute();
     else if(obj == _btn_stop)
         stopRobot();
     else if(obj == _btn_stop_sync)
@@ -216,6 +222,59 @@ std::vector<double> Plugin::addMove(std::vector<double> position, double acceler
     return position_and_move;
 }
 
+void Plugin::generatePythonRoute(std::vector<std::vector<double>> &route)
+{
+
+    // Read CSV file
+    ifstream in("poses.csv");
+    std::vector<std::vector<double>> route_raw;
+    if (in)
+    {
+        std::string line;
+
+        while (getline(in, line))
+        {
+            std::stringstream sep(line);
+            std::string field;
+
+            route_raw.push_back(std::vector<double>());
+
+            while (getline(sep, field, ','))
+            {
+                route_raw.back().push_back(std::stod(field));
+            }
+        }
+        in.close();
+    }
+
+    for(const auto &point : route_raw)
+    {
+        printArray(point);
+    }
+
+
+
+    /*
+    std::vector<std::vector<double>> route_raw =
+    {
+        {-0.4,0.008225806451612916,1.5542689061921757},
+        {-0.4,0.10821214898091279,1.5542689061921757},
+        {-0.4,0.20819849151021266,1.5542689061921757},
+        {-0.4,0.3081848340395126,1.5542689061921757},
+        {-0.4,0.4081711765688124,1.5542689061921757},
+        {-0.4,0.5081575190981122,1.5542689061921757}
+    };
+    */
+
+
+    // Transform and export path
+    route.clear();
+    for(size_t i = 0; i<route_raw.size(); i++)
+    {
+        route.push_back({-route_raw[i][0], -route_raw[i][1], 0.3,  route_raw[i][2], 0, -3.14159});
+    }
+}
+
 void Plugin::RunRobotControl()
 {
     if(!ur_robot_exists)
@@ -238,10 +297,11 @@ void Plugin::RunRobotControl()
     */
 
     std::vector<double> dynamicPlaceApproachL = placeApproachL_RW;
-    double theta = 22.5 * (M_PI / 180);
     double d = 0.05;
-    double dy = d*cos(theta);
-    double dx = d*sin(theta);
+    //double dy = d*cos(theta);
+    //double dx = d*sin(theta);
+    double dx = 0;
+    double dy = 0.05;
     std::cout << "c=" << 0.05 << "\tdy=" << dy << "\tdx=" << dx << std::endl;
 
     // Home robot and calibrate before start
@@ -263,7 +323,6 @@ void Plugin::RunRobotControl()
         moveToForce(CLOSE);
         attachObject();
         ur_robot->moveL(pickApproachL,0.8,0.8);
-
 
         // RRT Between points
         std::vector<std::vector<double>> path;
@@ -302,6 +361,67 @@ void Plugin::RunRobotControl()
 
     }
     // ur_robot->stopScript(); // Stops further actions
+}
+
+void Plugin::RunRobotControlRoute()
+{
+    if(!ur_robot_exists)
+    {
+        std::cout << "Robot not connected..." << std::endl;
+        return;
+    }
+
+    if(ur_robot_teach_mode)
+    {
+        std::cout << "Teach mode enabled..." << std::endl;
+        return;
+    }
+
+    std::vector<std::vector<double>> route;
+    generatePythonRoute(route);
+
+    // Home robot and calibrate before start
+    moveToJ(homeQ,0.8,0.8);
+    ur_robot_io->setStandardDigitalOut(0,OPEN);
+    zeroSensor();
+    ur_robot->setPayload(0.2);
+
+    ur_robot_stopped = false;
+    for(int i = 0; i<route.size(); i++)
+    {
+        if(ur_robot_stopped)
+            break;
+
+        // Move to pick approach
+        moveToJ(pickApproachQ, 0.8, 0.8);
+
+        // Grip
+        moveToForce(CLOSE);
+        attachObject();
+        ur_robot->moveL(pickApproachL,0.8,0.8);
+
+        // RRT Between points
+        std::vector<std::vector<double>> path;
+        std::vector<double> fromQ = ur_robot_receive->getActualQ();
+        std::vector<double> toQ = invKin(fromQ,route[i]);
+        rw::kinematics::State tmp_state = rws_state.clone();
+        createPathRRTConnect(fromQ, toQ, 0.05, 0.4, 0.4, 0.02, path, tmp_state);
+        path.push_back(addMove(toQ, 0.4, 0.4, 0));
+
+        std::cout << "Moving robot..." << std::endl;
+        ur_robot->moveJ(path);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+        // Place
+        std::vector<double> actualL=ur_robot_receive->getActualTCPPose();
+        moveToForce(OPEN);
+        resetObject();
+        //ur_robot->moveJ(toQ,0.4,0.4);
+        ur_robot->moveL(actualL,0.4,0.4);
+
+        // Move home
+        moveToJ(homeQ,0.8,0.8);
+    }
 }
 
 void Plugin::teachModeToggle()
@@ -356,6 +476,13 @@ void Plugin::startRobotControl()
     if(control_thread.joinable())
         control_thread.join();
     control_thread = std::thread(&Plugin::RunRobotControl, this);
+}
+
+void Plugin::startRobotControlRoute()
+{
+    if(control_thread.joinable())
+        control_thread.join();
+    control_thread = std::thread(&Plugin::RunRobotControlRoute, this);
 }
 
 void Plugin::startHomeRobot()
@@ -487,18 +614,31 @@ void Plugin::moveToForce(int mode)
 
 void Plugin::RunHomeRobot()
 {
+    std::vector<std::vector<double>> route;
+    generatePythonRoute(route);
+    printArray(route[0]);
+
     std::cout << "Homing robot..." << std::endl;
     rw::kinematics::State tmp_state = rws_state.clone();
 
-    std::vector<std::vector<double>> path;
+    //std::vector<std::vector<double>> path;
     //std::vector<double> fromQ = ur_robot_receive->getActualQ();
     std::vector<double> fromQ = rws_robot->getQ(tmp_state).toStdVector();
     std::vector<double> toQ = invKin(fromQ, placeApproachL_RW);
-
-
     rws_robot->setQ(toQ, tmp_state);
     getRobWorkStudio()->setState(tmp_state);
 
+    // REMEMBER WE CHANGED THE
+
+    /*
+    for(int i = 0; i < route.size(); i++)
+    {
+        std::vector<double> toQ = invKin(fromQ, route[i]);
+        rws_robot->setQ(toQ, tmp_state);
+        getRobWorkStudio()->setState(tmp_state);
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    }
+*/
     /*
     printArray(fromQ);
     printArray(toQ);
@@ -575,6 +715,8 @@ void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> 
 
 std::vector<double> Plugin::invKin(std::vector<double> startQ, std::vector<double> goalL)
 {
+    double theta = 22.5 * (M_PI / 180);
+
     // Duplicate state
     rw::kinematics::State tmp_state = rws_state.clone();
 
@@ -586,17 +728,22 @@ std::vector<double> Plugin::invKin(std::vector<double> startQ, std::vector<doubl
     printArray(goalL);
 
     const rw::math::Transform3D<> homeT = rws_robot_base->wTf(tmp_state);
+    //const rw::math::Transform3D<> homeT = rws_table->wTf(tmp_state);
+
+    const rw::math::Transform3D<> Tcorrection(
+            rw::math::Vector3D<>(0, 0, 0),
+            rw::math::RPY<>(-theta, 0, 0));
 
     const rw::math::Transform3D<> Tdesired(
             rw::math::Vector3D<>(goalL[0], goalL[1], goalL[2]),
             rw::math::RPY<>(goalL[3], goalL[4], goalL[5]));
 
-    const rw::math::Transform3D<> Tdesired_wtf = Tdesired*homeT;
+    const rw::math::Transform3D<> Tdesired_wtf = Tcorrection*Tdesired;
 
     const std::vector<rw::math::Q> solutions = solver.solve(Tdesired_wtf, tmp_state);
     std::cout << "Found " << solutions.size() << " inverse kinematic solutions!" << std::endl;
 
-    // Use first solution (SHOULD USE SHORTEST CONFIG DISTANCE)
+    // Use shorted config distance
     int best_solution_index = 0;
     double best_solution_distance = 99999;
     int index = 0;
