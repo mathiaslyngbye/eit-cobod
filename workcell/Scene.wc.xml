@@ -5,7 +5,7 @@
 	<Frame name="Table" refframe="WORLD" type="Fixed">
 		<RPY>0 0 0</RPY> <Pos>0 0 -0.1</Pos>		
 		 <Drawable name="Table" refframe="Table">
-         <Polytope file="objects/table/Sigmund_table.obj" />
+         <Polytope file="objects/table2/Sigmund_table.stl" />
      </Drawable>
 	</Frame>
 
@@ -30,14 +30,14 @@
  	</Frame>
 
 	<Frame name="WallRight" refframe="Table" type="Fixed">
-	  <RPY> 0 0 0</RPY> <Pos> -0.05 0.25 0.11 </Pos>
+	  <RPY> 0 0 0</RPY> <Pos> -0.05 0.275 0.10 </Pos>
 	  <Drawable name="wallRight">
 	   <Polytope file="objects/wall.obj"/>
 	  </Drawable>
 	 </Frame>
 
 	<Frame name="WallLeft" refframe="Table" type="Fixed">
-	  <RPY> 0 0 0</RPY> <Pos> -0.05 0.5 0.11 </Pos>
+	  <RPY> 0 0 0</RPY> <Pos> -0.05 0.5 0.10 </Pos>
 	  <Drawable name="wallLeft">
 	   <Polytope file="objects/wall.obj"/>
 	  </Drawable>
@@ -60,24 +60,25 @@
 	
     	<!-- Rebar -->
 
-	<Frame name="Rebar" refframe="Table"  type="Movable" daf="true">
-	   <RPY> 0 0 0</RPY> <Pos> 0.26965 -0.05 0.13 </Pos>
+
+	<Frame name="Rebar" refframe="Table" type="Fixed">
+	   <RPY> 0 0 0</RPY> <Pos> 0.297 -0.099 0.126 </Pos>
 	  <Drawable name="RebarDrawable">
-	   <Polytope file="objects/straight_rod.obj"/>
+	   <Polytope file="objects/302rod.obj"/>
 	  </Drawable>
-	 </Frame>
+	 </Frame>			
 
 	<!-- Magazine -->
 
 	<Frame name="Magazine" refframe="Table" type="Fixed">
-	  <RPY> 90 0 90</RPY> <Pos> 0 -0.25 -0.061 </Pos>
+	  <RPY> 90 0 90</RPY> <Pos> 0.0275 -0.25 -0.061 </Pos>
 	  <Drawable name="Magazine">
 	   <Polytope file="objects/feeding_sys.obj"/>
 	  </Drawable>
 	 </Frame>
 
 
-	<!-- Camera 
+	<!-- Camera -->
 
     <Frame name="Scanner25D" refframe="UR5e_2018.Flange" type="Movable">
 	    <Pos>0 -0.06 -0.035</Pos>
@@ -85,18 +86,20 @@
 	    <Property name="Scanner25D" desc="[fovy,width,height]">50 640 480</Property>
     </Frame>
 
-	<Frame name="ScannerDrawable" refframe="Scanner25D" type="Movable">
+
+	<!--<Frame name="ScannerDrawable" refframe="Scanner25D" type="Movable">
         <RPY>0 0 -90</RPY> <Pos>0 0 0.025</Pos>		
         <Drawable name="ScannerDrawable" refframe="Table">
             <Polytope file="objects/camera/camera.stl" />
         </Drawable>
-	</Frame>
+	</Frame>-->
+
 
     <Frame name="Camera" refframe="UR5e_2018.Flange" type="Movable">
         <Pos>0 -0.06 -0.035</Pos>
         <RPY>0 0 180</RPY>
         <Property name="Camera" desc="[fovy,width,height]">50 640 480</Property>
-    </Frame> -->
+    </Frame>
 
 	<!-- Collision -->
 

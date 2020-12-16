@@ -648,9 +648,226 @@ void Plugin::get25DImage()
             {
                 rw::math::Vector3D<float> p = p_tmp;
                 output << p(0) << " " << p(1) << " " << p(2) << "\n";
+                //std::cout << p(0) << " " << p(1) << " " << p(2) << "\n";
             }
             output.close();
 
+            pcl::PCLPointCloud2::Ptr object_in (new pcl::PCLPointCloud2 ());
+            pcl::PCLPointCloud2::Ptr scene_in (new pcl::PCLPointCloud2 ());
+            pcl::PCLPointCloud2::Ptr scene_cropped (new pcl::PCLPointCloud2 ());
+
+            pcl::io::loadPCDFile("wall_hr.pcd", *object_in);
+            pcl::io::loadPCDFile(_cameras25D[i] + ".pcd", *scene_in);
+
+
+            Eigen::Vector4f minPoint;
+            minPoint[0]=-2;  // define minimum point x
+            minPoint[1]=-2;  // define minimum point y
+            minPoint[2]=-2;  // define minimum point z
+            Eigen::Vector4f maxPoint;
+            maxPoint[0]=1;  // define max point x
+            maxPoint[1]=1;  // define max point y
+            maxPoint[2]=0;  // define max point z
+
+            pcl::CropBox<pcl::PCLPointCloud2> cropFilter;
+            cropFilter.setInputCloud (scene_in);
+            cropFilter.setMin(minPoint);
+            cropFilter.setMax(maxPoint);
+
+            cropFilter.filter (*scene_cropped);
+
+            //pcl::io::savePCDFile ("test_cropbox.pcd", *scene_out);
+
+            pcl::PCLPointCloud2::Ptr object_temp (new pcl::PCLPointCloud2 ());
+            pcl::PCLPointCloud2::Ptr scene_temp (new pcl::PCLPointCloud2 ());
+
+            pcl::VoxelGrid<pcl::PCLPointCloud2> voxobj;
+            voxobj.setInputCloud (object_in);
+            voxobj.setLeafSize (0.01f, 0.01f, 0.01f);
+            voxobj.filter (*object_temp);
+
+            pcl::VoxelGrid<pcl::PCLPointCloud2> voxscene;
+            voxscene.setInputCloud (scene_cropped);
+            voxscene.setLeafSize (0.01f, 0.01f, 0.01f);
+            voxscene.filter (*scene_temp);
+
+            pcl::PointCloud<pcl::PointNormal>::Ptr object_filtered(new pcl::PointCloud<pcl::PointNormal>);
+            pcl::PointCloud<pcl::PointNormal>::Ptr scene_filtered(new pcl::PointCloud<pcl::PointNormal>);
+
+            pcl::fromPCLPointCloud2( *object_temp, *object_filtered);
+            pcl::fromPCLPointCloud2( *scene_temp, *scene_filtered);
+
+            // Show
+            {
+                pcl::visualization::PCLVisualizer v("Before global alignment");
+                v.addPointCloud<pcl::PointNormal>(object_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(object_filtered, 0, 255, 0), "object");
+                v.addPointCloud<pcl::PointNormal>(scene_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(scene_filtered, 255, 0, 0),"scene");
+                v.spin();
+            }
+
+            // Compute surface normals
+            {
+                pcl::ScopeTime t("Surface normals");
+                pcl::NormalEstimation<pcl::PointNormal,pcl::PointNormal> ne;
+                ne.setKSearch(10);
+
+                ne.setInputCloud(object_filtered);
+                ne.compute(*object_filtered);
+
+                ne.setInputCloud(scene_filtered);
+                ne.compute(*scene_filtered);
+            }
+
+            // Compute shape features
+            pcl::PointCloud<pcl::Histogram<153>>::Ptr object_features(new pcl::PointCloud<pcl::Histogram<153>>);
+            pcl::PointCloud<pcl::Histogram<153>>::Ptr scene_features(new pcl::PointCloud<pcl::Histogram<153>>);
+            {
+                pcl::ScopeTime t("Shape features");
+
+                pcl::SpinImageEstimation<pcl::PointNormal,pcl::PointNormal,pcl::Histogram<153>> spin;
+                spin.setRadiusSearch(0.05);
+
+                spin.setInputCloud(object_filtered);
+                spin.setInputNormals(object_filtered);
+                spin.compute(*object_features);
+
+                spin.setInputCloud(scene_filtered);
+                spin.setInputNormals(scene_filtered);
+                spin.compute(*scene_features);
+            }
+
+            // Find feature matches
+            pcl::Correspondences corr(object_features->size());
+            {
+                pcl::ScopeTime t("Feature matches");
+                for(size_t i = 0; i < object_features->size(); ++i) {
+                    corr[i].index_query = i;
+                    nearest_feature(object_features->points[i], *scene_features, corr[i].index_match, corr[i].distance);
+                }
+            }
+
+            // Show matches
+            {
+                pcl::visualization::PCLVisualizer v("Matches");
+                v.addPointCloud<pcl::PointNormal>(object_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(object_filtered, 0, 255, 0), "object");
+                v.addPointCloud<pcl::PointNormal>(scene_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(scene_filtered, 255, 0, 0),"scene");
+                v.addCorrespondences<pcl::PointNormal>(object_filtered, scene_filtered, corr, 1);
+                v.spin();
+            }
+
+            // Create a k-d tree for scene
+            pcl::search::KdTree<pcl::PointNormal> tree;
+            tree.setInputCloud(scene_filtered);
+
+            // Set RANSAC parameters
+            const size_t iter = 5000;
+            const float thressq = 0.01 * 0.01;
+
+            // Start RANSAC
+            Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
+            pcl::PointCloud<pcl::PointNormal>::Ptr object_aligned(new pcl::PointCloud<pcl::PointNormal>);
+            float penalty = FLT_MAX;
+            {
+                pcl::ScopeTime t("RANSAC");
+                cout << "Starting RANSAC..." << endl;
+                pcl::common::UniformGenerator<int> gen(0, corr.size() - 1);
+                for(size_t i = 0; i < iter; ++i) {
+                    if((i + 1) % 100 == 0)
+                        cout << "\t" << i+1 << endl;
+                    // Sample 3 random correspondences
+                    std::vector<int> idxobj(3);
+                    std::vector<int> idxscn(3);
+                    for(int j = 0; j < 3; ++j) {
+                        const int idx = gen.run();
+                        idxobj[j] = corr[idx].index_query;
+                        idxscn[j] = corr[idx].index_match;
+                    }
+
+                    // Estimate transformation
+                    Eigen::Matrix4f T;
+                    pcl::registration::TransformationEstimationSVD<pcl::PointNormal,pcl::PointNormal> est;
+                    est.estimateRigidTransformation(*object_filtered, idxobj, *scene_filtered, idxscn, T);
+
+                    // Apply pose
+                    pcl::transformPointCloud(*object_filtered, *object_aligned, T);
+
+                    // Validate
+                    std::vector<std::vector<int> > idx;
+                    std::vector<std::vector<float> > distsq;
+                    tree.nearestKSearch(*object_aligned, std::vector<int>(), 1, idx, distsq);
+
+                    // Compute inliers and RMSE
+                    size_t inliers = 0;
+                    float rmse = 0;
+                    for(size_t j = 0; j < distsq.size(); ++j)
+                        if(distsq[j][0] <= thressq)
+                            ++inliers, rmse += distsq[j][0];
+                    rmse = sqrtf(rmse / inliers);
+
+                    // Evaluate a penalty function
+                    const float outlier_rate = 1.0f - float(inliers) / object_filtered->size();
+                    //const float penaltyi = rmse;
+                    const float penaltyi = outlier_rate;
+
+                    // Update result
+                    if(penaltyi < penalty) {
+                        cout << "\t--> Got a new model with " << inliers << " inliers!" << endl;
+                        penalty = penaltyi;
+                        pose = T;
+                    }
+                }
+
+                transformPointCloud(*object_filtered, *object_aligned, pose);
+
+                // Compute inliers and RMSE
+                std::vector<std::vector<int> > idx;
+                std::vector<std::vector<float> > distsq;
+                tree.nearestKSearch(*object_aligned, std::vector<int>(), 1, idx, distsq);
+                size_t inliers = 0;
+                float rmse = 0;
+                for(size_t i = 0; i < distsq.size(); ++i)
+                    if(distsq[i][0] <= thressq)
+                        ++inliers, rmse += distsq[i][0];
+                rmse = sqrtf(rmse / inliers);
+
+                // Print pose
+                cout << "Got the following pose:" << endl << pose << endl;
+                cout << "Inliers: " << inliers << "/" << object_filtered->size() << endl;
+                cout << "RMSE: " << rmse << endl;
+            } // End timing
+
+            // Show result
+            {
+                pcl::visualization::PCLVisualizer v("After global alignment");
+                v.addPointCloud<pcl::PointNormal>(object_aligned, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(object_aligned, 0, 255, 0), "object_aligned");
+                v.addPointCloud<pcl::PointNormal>(scene_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(scene_filtered, 255, 0, 0),"scene");
+                v.spin();
+            }
+
+
+        }
+    }
+}
+
+float Plugin::dist_sq(const pcl::Histogram<153>& query, const pcl::Histogram<153>& target) {
+    float result = 0.0;
+    for(int i = 0; i < pcl::Histogram<153>::descriptorSize(); ++i) {
+        const float diff = reinterpret_cast<const float*>(&query)[i] - reinterpret_cast<const float*>(&target)[i];
+        result += diff * diff;
+    }
+
+    return result;
+}
+
+void Plugin::nearest_feature(const pcl::Histogram<153>& query, const pcl::PointCloud<pcl::Histogram<153>>& target, int &idx, float &distsq) {
+
+    idx = 0;
+    distsq = dist_sq(query, target[0]);
+    for(size_t i = 1; i < target.size(); ++i) {
+        const float disti = dist_sq(query, target[i]);
+        if(disti < distsq) {
+            idx = i;
+            distsq = disti;
         }
     }
 }

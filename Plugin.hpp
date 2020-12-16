@@ -19,6 +19,23 @@
 #include <rwlibs/pathplanners/rrt/RRTPlanner.hpp>
 #include <rwlibs/pathplanners/rrt/RRTQToQPlanner.hpp>
 
+
+#undef foreach
+//PCL includes
+#include <pcl/point_cloud.h>
+#include <pcl/filters/crop_box.h>
+#include <pcl/common/random.h>
+#include <pcl/common/time.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/features/spin_image.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/registration/correspondence_rejection_sample_consensus.h>
+#include <pcl/registration/transformation_estimation_svd.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/voxel_grid.h>
+
 // Boost includes
 #include <boost/bind.hpp>
 
@@ -37,6 +54,7 @@
 // Extra defines for robot gripper
 #define OPEN false
 #define CLOSE true
+
 
 class QPushButton;
 
@@ -88,6 +106,9 @@ private slots:
 
     // Vision
     void get25DImage();
+    //Helper functions
+    void nearest_feature(const pcl::Histogram<153>& query, const pcl::PointCloud<pcl::Histogram<153>>& target, int &idx, float &distsq);
+    float dist_sq(const pcl::Histogram<153>& query, const pcl::Histogram<153>& target);
 
     // Planning
     void createPathRRTConnect(std::vector<double>, std::vector<double>, double, double, double, std::vector<std::vector<double>>&, rw::kinematics::State);
