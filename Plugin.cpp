@@ -24,6 +24,10 @@ Plugin::Plugin():
     pLayout->addWidget(_btn_sync, row++, 0);
     connect(_btn_sync, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
+    _btn_stop_sync = new QPushButton("Stop synchronized movement");
+    pLayout->addWidget(_btn_stop_sync, row++, 0);
+    connect(_btn_stop_sync, SIGNAL(clicked()), this, SLOT(clickEvent()));
+
     // Movement/Control
     QLabel *label_control = new QLabel(this);
     label_control->setText("Control");
@@ -77,6 +81,7 @@ Plugin::Plugin():
     ur_robot_exists = false;
     ur_robot_teach_mode = false;
     ur_robot_stopped = true;
+    rws_robot_synced = false;
 
     //Initialize camera vector
     _cameras25D = {"Scanner25D"};
@@ -157,6 +162,8 @@ void Plugin::clickEvent()
         startRobotControl();
     else if(obj == _btn_stop)
         stopRobot();
+    else if(obj == _btn_stop_sync)
+        stopSync();
     else if(obj == _btn_teach)
         teachModeToggle();
     else if(obj == _btn_home)
@@ -230,7 +237,7 @@ void Plugin::RunRobotControl()
     std::vector<std::vector<double>> path;
     */
 
-    std::vector<double> dynamicPlaceApproachL = placeApproachL;
+    std::vector<double> dynamicPlaceApproachL = placeApproachL_RW;
     double theta = 22.5 * (M_PI / 180);
     double d = 0.05;
     double dy = d*cos(theta);
@@ -257,30 +264,31 @@ void Plugin::RunRobotControl()
         attachObject();
         ur_robot->moveL(pickApproachL,0.8,0.8);
 
-        /*
+
         // RRT Between points
         std::vector<std::vector<double>> path;
         std::vector<double> fromQ = ur_robot_receive->getActualQ();
-        std::vector<double> toQ = invKin(dynamicPlaceApproachL);
+        std::vector<double> toQ = invKin(fromQ,dynamicPlaceApproachL);
         rw::kinematics::State tmp_state = rws_state.clone();
-
-        createPathRRTConnect(fromQ, toQ, 0.05, 0.8, 0.8, path, tmp_state);
+        createPathRRTConnect(fromQ, toQ, 0.05, 0.4, 0.4, path, tmp_state);
 
         std::cout << "Moving robot..." << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
         ur_robot->moveJ(path);
-        */
 
         // Move home
-        moveToJ(homeQ,0.8,0.8);
+        //moveToJ(homeQ,0.8,0.8);
 
         // Move to place approach
-        ur_robot->moveL(dynamicPlaceApproachL,0.8,0.8);
+        //std::vector<double> fromQ = rws_robot->getQ(rws_state).toStdVector();
+        //std::vector<double> toQ = invKin(fromQ, dynamicPlaceApproachL);
+        //ur_robot->moveJ(toQ,0.4,0.4);
 
         // Place
         moveToForce(OPEN);
         resetObject();
-        ur_robot->moveL(dynamicPlaceApproachL,0.8,0.8);
+        ur_robot->moveJ(toQ,0.4,0.4);
+        //ur_robot->moveL(dynamicPlaceApproachL,0.8,0.8);
 
         // Move home
         moveToJ(homeQ,0.8,0.8);
@@ -324,7 +332,8 @@ void Plugin::RunRobotMimic()
         return;
     }
 
-    while(true)
+    rws_robot_synced = true;
+    while(rws_robot_synced)
     {
         std::vector<double> currentQ = ur_robot_receive->getActualQ();
         rw::kinematics::State s = rws_state;
@@ -361,6 +370,12 @@ void Plugin::stopRobot()
     ur_robot->stopL();
     ur_robot->stopJ();
     ur_robot_stopped = true;
+}
+
+void Plugin::stopSync()
+{
+    std::cout << "Stopping robot sync..." << std::endl;
+    rws_robot_synced = false;
 }
 
 void Plugin::zeroSensor()
@@ -472,12 +487,13 @@ void Plugin::moveToForce(int mode)
 void Plugin::RunHomeRobot()
 {
     std::cout << "Homing robot..." << std::endl;
+    rw::kinematics::State tmp_state = rws_state.clone();
 
     std::vector<std::vector<double>> path;
     //std::vector<double> fromQ = ur_robot_receive->getActualQ();
-    std::vector<double> toQ = invKin(homeTCP_new);
+    std::vector<double> fromQ = rws_robot->getQ(tmp_state).toStdVector();
+    std::vector<double> toQ = invKin(fromQ, placeApproachL_RW);
 
-    rw::kinematics::State tmp_state = rws_state.clone();
 
     rws_robot->setQ(toQ, tmp_state);
     getRobWorkStudio()->setState(tmp_state);
@@ -544,7 +560,7 @@ void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> 
     }
 }
 
-std::vector<double> Plugin::invKin(std::vector<double> goalL)
+std::vector<double> Plugin::invKin(std::vector<double> startQ, std::vector<double> goalL)
 {
     // Duplicate state
     rw::kinematics::State tmp_state = rws_state.clone();
@@ -568,18 +584,38 @@ std::vector<double> Plugin::invKin(std::vector<double> goalL)
     std::cout << "Found " << solutions.size() << " inverse kinematic solutions!" << std::endl;
 
     // Use first solution (SHOULD USE SHORTEST CONFIG DISTANCE)
+    int best_solution_index = 0;
+    double best_solution_distance = 99999;
+    int index = 0;
     for(const auto &solution : solutions)
     {
         rws_robot->setQ(solution, tmp_state);
         //getRobWorkStudio()->setState(tmp_state);
         if( !collisionDetector->inCollision(tmp_state,NULL,true) )
         {
-            printArray(solution.toStdVector());
-            return solution.toStdVector();
+            double solution_distance = getConfDistance(startQ, solution.toStdVector());
+            if(solution_distance < best_solution_distance)
+            {
+                best_solution_index = index;
+                best_solution_distance = solution_distance;
+            }
         }
+        index++;
     }
+
+    return solutions[best_solution_index].toStdVector();
 }
 
+double Plugin::getConfDistance(std::vector<double> a, std::vector<double> b)
+{
+    double sum = 0;
+    for(size_t i = 0; i<a.size(); i++)
+    {
+        sum += pow((a[i] - b[i]),2);
+    }
+    sum = sqrt(sum);
+    return sum;
+}
 void Plugin::get25DImage()
 {
     std::vector<double> q_vector = {rw::math::Pi/2,-rw::math::Pi/2,rw::math::Pi/2,-rw::math::Pi/2,-rw::math::Pi/2,0};
