@@ -310,7 +310,7 @@ void Plugin::RunRobotControl()
     ur_robot->setPayload(0.2);
 
     ur_robot_stopped = false;
-    for(int i = 0; i<4; i++)
+    for(int i = 0; i<10; i++)
     {
         if(ur_robot_stopped)
             break;
@@ -328,7 +328,7 @@ void Plugin::RunRobotControl()
         std::vector<double> fromQ = ur_robot_receive->getActualQ();
         std::vector<double> toQ = invKin(fromQ,dynamicPlaceApproachL);
         rw::kinematics::State tmp_state = rws_state.clone();
-        createPathRRTConnect(fromQ, toQ, 0.05, 0.4, 0.4, 0.02, path, tmp_state);
+        createPathRRTConnect(fromQ, toQ, 0.05, 0.8, 0.8, 0.02, path, tmp_state);
         path.push_back(addMove(toQ, 0.4, 0.4, 0));
 
         std::cout << "Moving robot..." << std::endl;
@@ -344,10 +344,11 @@ void Plugin::RunRobotControl()
         //ur_robot->moveJ(toQ,0.4,0.4);
 
         // Place
+        std::vector<double> actualL=ur_robot_receive->getActualTCPPose();
         moveToForce(OPEN);
         resetObject();
-        ur_robot->moveJ(toQ,0.4,0.4);
-        //ur_robot->moveL(dynamicPlaceApproachL,0.8,0.8);
+        //ur_robot->moveJ(toQ,0.4,0.4);
+        ur_robot->moveL(actualL,0.8,0.8);
 
         // Move home
         moveToJ(homeQ,0.8,0.8);
@@ -542,7 +543,7 @@ void Plugin::resetObject()
      // Attach rebar to Table
      rws_rebar->setTransform(
                  rw::math::Transform3D<>(
-                     rw::math::Vector3D<>(0.297, -0.1, 0.126),
+                     rw::math::Vector3D<>(0.297, -0.099, 0.15),
                      rw::math::RPY<>(0, 0, 0)),
              tmp_state
              );
