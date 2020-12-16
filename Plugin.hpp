@@ -19,12 +19,30 @@
 #include <rwlibs/pathplanners/rrt/RRTPlanner.hpp>
 #include <rwlibs/pathplanners/rrt/RRTQToQPlanner.hpp>
 
+
+#undef foreach
+//PCL includes
+#include <pcl/point_cloud.h>
+#include <pcl/filters/crop_box.h>
+#include <pcl/common/random.h>
+#include <pcl/common/time.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/features/spin_image.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/registration/correspondence_rejection_sample_consensus.h>
+#include <pcl/registration/transformation_estimation_svd.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/voxel_grid.h>
+
 // Boost includes
 #include <boost/bind.hpp>
 
 // Qt includes
 #include <QPushButton>
 #include <QGridLayout>
+#include <QLabel>
 
 // Standard includes
 #include <iostream>
@@ -36,6 +54,7 @@
 // Extra defines for robot gripper
 #define OPEN false
 #define CLOSE true
+
 
 class QPushButton;
 
@@ -71,7 +90,11 @@ private slots:
     void startHomeRobot();
 
     // Manage
+    std::vector<double> invKin(std::vector<double>);
+    void attachObject();
+    void resetObject();
     void connectRobot();
+    void zeroSensor();
     void stopRobot();
     void teachModeToggle();
 
@@ -81,19 +104,26 @@ private slots:
 
     // Vision
     void get25DImage();
+    //Helper functions
+    void nearest_feature(const pcl::Histogram<153>& query, const pcl::PointCloud<pcl::Histogram<153>>& target, int &idx, float &distsq);
+    float dist_sq(const pcl::Histogram<153>& query, const pcl::Histogram<153>& target);
 
     // Planning
-    void createPathRRTConnect(std::vector<double>, std::vector<double>, double, std::vector<std::vector<double>>&, rw::kinematics::State);
+    void createPathRRTConnect(std::vector<double>, std::vector<double>, double, double, double, std::vector<std::vector<double>>&, rw::kinematics::State);
 
 private:
     // Qt buttons
-    QPushButton *_btn0,*_btn1,*_btn2,*_btn3,*_btn4, *_btn5, *_btn6, *_btn7, *_btn8, *_btn9, *_btn10, *_btn11;
+    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach;
 
     // RobWorkStudio interface
     rw::proximity::CollisionDetector::Ptr collisionDetector;
     rw::models::WorkCell::Ptr rws_wc;
     rw::kinematics::State rws_state;
-    rw::models::Device::Ptr rws_robot;
+    rw::models::SerialDevice::Ptr rws_robot;
+    rw::kinematics::MovableFrame::Ptr rws_rebar;
+    rw::kinematics::Frame::Ptr rws_robot_tcp;
+    rw::kinematics::Frame::Ptr rws_table;
+
 
     // UR interface
     std::string ur_robot_ip = "192.168.0.212";
@@ -113,6 +143,8 @@ private:
     std::vector<double> placeApproachQ =   { 1.74693, -1.08593, 1.66241, -2.14615, -1.56947, -0.999986 };
     std::vector<double> placeApproachL =   { 0.241712, -0.593151, 0.224805, -1.7459, 2.61178, 0.00491445 };
     std::vector<double> placeQ =   { 1.81889, -1.15219, 1.91062, -2.26603, -1.53601, -0.886415 };
+
+    std::vector<double> rebarL =  { 0.26965, -0.05, 0.13, 0, 0, 0 };
 
     //Vision
     rwlibs::simulation::GLFrameGrabber25D* _framegrabber25D;

@@ -11,54 +11,65 @@ Plugin::Plugin():
     // Define button layout
     int row = 0;
 
-    _btn0 = new QPushButton("Connect");
-    pLayout->addWidget(_btn0, row++, 0);
-    connect(_btn0, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    // Initiation
+    QLabel *label_init = new QLabel(this);
+    label_init->setText("Initiation");
+    pLayout->addWidget(label_init,row++,0);
 
-    _btn1 = new QPushButton("Start robot mimic");
-    pLayout->addWidget(_btn1, row++, 0);
-    connect(_btn1, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    _btn_connect = new QPushButton("Connect");
+    pLayout->addWidget(_btn_connect, row++, 0);
+    connect(_btn_connect, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn2 = new QPushButton("Start robot control");
-    pLayout->addWidget(_btn2, row++, 0);
-    connect(_btn2, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    _btn_sync = new QPushButton("Synchronize movement");
+    pLayout->addWidget(_btn_sync, row++, 0);
+    connect(_btn_sync, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn3 = new QPushButton("Stop robot");
-    pLayout->addWidget(_btn3, row++, 0);
-    connect(_btn3, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    // Movement/Control
+    QLabel *label_control = new QLabel(this);
+    label_control->setText("Control");
+    pLayout->addWidget(label_control,row++,0);
 
-    _btn4 = new QPushButton("Toggle teach mode");
-    pLayout->addWidget(_btn4, row++, 0);
-    connect(_btn4, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    _btn_control = new QPushButton("Start robot control");
+    pLayout->addWidget(_btn_control, row++, 0);
+    connect(_btn_control, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn5 = new QPushButton("Home robot");
-    pLayout->addWidget(_btn5, row++, 0);
-    connect(_btn5, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    _btn_stop = new QPushButton("Stop robot");
+    pLayout->addWidget(_btn_stop, row++, 0);
+    connect(_btn_stop, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn6 = new QPushButton("Print Location");
-    pLayout->addWidget(_btn6, row++, 0);
-    connect(_btn6, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    _btn_home = new QPushButton("Home robot");
+    pLayout->addWidget(_btn_home, row++, 0);
+    connect(_btn_home, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn7 = new QPushButton("Go to Pick Approach");
-    pLayout->addWidget(_btn7, row++, 0);
-    connect(_btn7, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    // Debug / Managing
+    QLabel *label_debug = new QLabel(this);
+    label_debug->setText("Debugging");
+    pLayout->addWidget(label_debug,row++,0);
 
-    _btn8 = new QPushButton("Pick Rebar");
-    pLayout->addWidget(_btn8, row++, 0);
-    connect(_btn8, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    _btn_print = new QPushButton("Print Location");
+    pLayout->addWidget(_btn_print, row++, 0);
+    connect(_btn_print, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn9 = new QPushButton("Go to Place Approach");
-    pLayout->addWidget(_btn9, row++, 0);
-    connect(_btn9, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    _btn_zero = new QPushButton("Zero force-torque sensor");
+    pLayout->addWidget(_btn_zero, row++, 0);
+    connect(_btn_zero, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn10 = new QPushButton("Place Rebar");
-    pLayout->addWidget(_btn10, row++, 0);
-    connect(_btn10, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    _btn_teach = new QPushButton("Enable teach mode");
+    pLayout->addWidget(_btn_teach, row++, 0);
+    connect(_btn_teach, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn11 = new QPushButton("Get 25DImage");
-    pLayout->addWidget(_btn11, row++, 0);
-    connect(_btn11, SIGNAL(clicked()), this, SLOT(clickEvent()));
+    _btn_attach = new QPushButton("Attach rebar");
+    pLayout->addWidget(_btn_attach, row++, 0);
+    connect(_btn_attach, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
+    // Vision
+    QLabel *label_vision = new QLabel(this);
+    label_vision->setText("Vision");
+    pLayout->addWidget(label_vision,row++,0);
+
+    _btn_image = new QPushButton("Get 25D image");
+    pLayout->addWidget(_btn_image, row++, 0);
+    connect(_btn_image, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
     pLayout->setRowStretch(row,1);
 
@@ -91,8 +102,17 @@ void Plugin::open(rw::models::WorkCell* workcell)
     {
         // Get rws info
         rws_wc = workcell;
-        rws_state = rws_wc->getDefaultState();
-        rws_robot = rws_wc->findDevice<rw::models::SerialDevice>("UR-6-85-5-A");
+        rws_state       = rws_wc->getDefaultState();
+        rws_robot       = rws_wc->findDevice<rw::models::SerialDevice>("UR5e_2018");
+        rws_rebar       = rws_wc->findFrame<rw::kinematics::MovableFrame>("Rebar");
+        rws_robot_tcp   = rws_wc->findFrame<rw::kinematics::Frame>("GraspTCP");
+        rws_table       = rws_wc->findFrame<rw::kinematics::Frame>("Table");
+
+        if(rws_robot == NULL)
+        {
+            std::cout << "Couldn't locate rws_robot!" << std::endl;
+            return;
+        }
 
         // Use rws collision checker
         collisionDetector = rw::common::ownedPtr(new rw::proximity::CollisionDetector(rws_wc, rwlibs::proximitystrategies::ProximityStrategyFactory::makeDefaultCollisionStrategy()));
@@ -128,29 +148,25 @@ void Plugin::clickEvent()
     // log().info() << "Button 0 pressed!\n";
     QObject *obj = sender();
 
-    if(obj == _btn0)
+    if(obj == _btn_connect)
         connectRobot();
-    else if(obj == _btn1)
+    else if(obj == _btn_sync)
         startRobotMimic();
-    else if(obj == _btn2)
+    else if(obj == _btn_control)
         startRobotControl();
-    else if(obj == _btn3)
+    else if(obj == _btn_stop)
         stopRobot();
-    else if(obj == _btn4)
+    else if(obj == _btn_teach)
         teachModeToggle();
-    else if(obj == _btn5)
+    else if(obj == _btn_home)
         startHomeRobot();
-    else if(obj == _btn6)
+    else if(obj == _btn_print)
         printLocation();
-    else if(obj == _btn7)
-        moveToJ(pickApproachQ,0.8,0.8);
-    else if(obj == _btn8)
-        moveToForce(CLOSE);
-    else if(obj == _btn9)
-        moveToJ(placeApproachQ,0.8,0.8);
-    else if(obj == _btn10)
-        moveToForce(OPEN);
-    else if(obj == _btn11)
+    else if(obj == _btn_zero)
+        zeroSensor();
+    else if(obj == _btn_attach)
+        attachObject();
+    else if(obj == _btn_image)
         get25DImage();
 }
 
@@ -220,22 +236,39 @@ void Plugin::RunRobotControl()
     double dx = d*sin(theta);
     std::cout << "c=" << 0.05 << "\tdy=" << dy << "\tdx=" << dx << std::endl;
 
+    // Home robot and calibrate before start
+    moveToJ(homeQ,0.8,0.8);
+    ur_robot_io->setStandardDigitalOut(0,OPEN);
+    zeroSensor();
+    ur_robot->setPayload(0.2);
+
     ur_robot_stopped = false;
     for(int i = 0; i<4; i++)
     {
         if(ur_robot_stopped)
             break;
 
-        // Move home
-        moveToJ(homeQ,0.8,0.8);
-        ur_robot_io->setStandardDigitalOut(0,OPEN);
-
         // Move to pick approach
         moveToJ(pickApproachQ, 0.8, 0.8);
 
         // Grip
         moveToForce(CLOSE);
+        attachObject();
         ur_robot->moveL(pickApproachL,0.8,0.8);
+
+        /*
+        // RRT Between points
+        std::vector<std::vector<double>> path;
+        std::vector<double> fromQ = ur_robot_receive->getActualQ();
+        std::vector<double> toQ = invKin(dynamicPlaceApproachL);
+        rw::kinematics::State tmp_state = rws_state.clone();
+
+        createPathRRTConnect(fromQ, toQ, 0.05, 0.8, 0.8, path, tmp_state);
+
+        std::cout << "Moving robot..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        ur_robot->moveJ(path);
+        */
 
         // Move home
         moveToJ(homeQ,0.8,0.8);
@@ -243,8 +276,9 @@ void Plugin::RunRobotControl()
         // Move to place approach
         ur_robot->moveL(dynamicPlaceApproachL,0.8,0.8);
 
-        // Ungrip
+        // Place
         moveToForce(OPEN);
+        resetObject();
         ur_robot->moveL(dynamicPlaceApproachL,0.8,0.8);
 
         // Move home
@@ -327,6 +361,46 @@ void Plugin::stopRobot()
     ur_robot->stopJ();
     ur_robot_stopped = true;
 }
+
+void Plugin::zeroSensor()
+{
+    std::cout << "Calibrating..." << std::endl;
+    ur_robot->zeroFtSensor();
+    std::cout << "Done!" << std::endl;
+}
+
+void Plugin::attachObject()
+{
+     rw::kinematics::State tmp_state = rws_state.clone();
+
+     // Attach rebar to TCP
+     rws_rebar->setTransform(
+                 rw::math::Transform3D<>(
+                     rw::math::Vector3D<>(0, 0.05, 0),
+                     rw::math::RPY<>(0, 0, 0)),
+             tmp_state
+             );
+     rws_rebar->attachTo(rws_robot_tcp.get(), tmp_state);
+
+     getRobWorkStudio()->setState(tmp_state);
+}
+
+void Plugin::resetObject()
+{
+     rw::kinematics::State tmp_state = rws_state.clone();
+
+     // Attach rebar to Table
+     rws_rebar->setTransform(
+                 rw::math::Transform3D<>(
+                     rw::math::Vector3D<>(0.26965, -0.05, 0.13),
+                     rw::math::RPY<>(0, 0, 0)),
+             tmp_state
+             );
+     rws_rebar->attachTo(rws_table.get(), tmp_state);
+
+     getRobWorkStudio()->setState(tmp_state);
+}
+
 
 void Plugin::moveToJ(std::vector<double> goal, double acceleration, double velocity)
 {
@@ -411,14 +485,29 @@ void Plugin::RunHomeRobot()
     std::cout << "Homing robot..." << std::endl;
 
     std::vector<std::vector<double>> path;
+    std::cout << "> Getting from Q" << std::endl;
     std::vector<double> fromQ = ur_robot_receive->getActualQ();
-    std::vector<double> toQ = homeQ;
-    rw::kinematics::State tmp_state = rws_state;
+    std::cout << "> Getting to Q" << std::endl;
+    std::vector<double> toQ = homeQ; //invKin(homeTCP);
+    std::cout << "> Cloning state" << std::endl;
 
-    createPathRRTConnect(fromQ, toQ, 0.05, path, tmp_state);
+    rw::kinematics::State tmp_state = rws_state.clone();
+
+    printArray(fromQ);
+    printArray(toQ);
+
+    std::cout << "> Running RRT" << std::endl;
+    createPathRRTConnect(fromQ, toQ, 0.05, 0.8, 0.8, path, tmp_state);
 
     std::cout << "Moving robot..." << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    for(int i = 0; i < path.size(); i++)
+    {
+        printArray(path[i]);
+    }
+
+    path.clear();
+    path.push_back(addMove(fromQ,0.5,0.5));
+    path.push_back(addMove(homeQ,0.5,0.5));
     ur_robot->moveJ(path);
 }
 
@@ -441,7 +530,7 @@ void Plugin::printArray(std::vector<double> input)
     std::cout << input[input.size()-1] << " }" << std::endl;
 }
 
-void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> to, double epsilon, std::vector<std::vector<double>> &path, rw::kinematics::State state)
+void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> to, double epsilon, double velocity, double acceleration, std::vector<std::vector<double>> &path, rw::kinematics::State state)
 {
     rw::pathplanning::PlannerConstraint constraint = rw::pathplanning::PlannerConstraint::make(collisionDetector.get(), rws_robot, state);
     rw::pathplanning::QSampler::Ptr sampler = rw::pathplanning::QSampler::makeConstrained(rw::pathplanning::QSampler::makeUniform(rws_robot), constraint.getQConstraintPtr());
@@ -457,9 +546,32 @@ void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> 
     for(const auto &q : qpath)
     {
         std::vector<double> q_copy = q.toStdVector();
-        path.push_back(addMove(q_copy, 0.5, 0.5));
+        path.push_back(addMove(q_copy, velocity, acceleration));
     }
 }
+
+std::vector<double> Plugin::invKin(std::vector<double> goalL)
+{
+    rw::kinematics::State tmp_state = rws_state.clone();
+    const rw::invkin::ClosedFormIKSolverUR solver(rws_robot, tmp_state);
+
+    const rw::math::Transform3D<> Tdesired(
+            rw::math::Vector3D<>(goalL[0], goalL[1], goalL[2]),
+            rw::math::RPY<>(goalL[3], goalL[4], goalL[5]));
+
+    const std::vector<rw::math::Q> solutions = solver.solve(Tdesired, tmp_state);
+
+    // Use first solution (SHOULD USE SHORTEST CONFIG DISTANCE
+    for(unsigned int i=0; i<solutions.size(); i++)
+    {
+        if( !collisionDetector->inCollision(tmp_state,NULL,true) )
+        {
+            return solutions[i].toStdVector();
+        }
+    }
+}
+
+
 
 void Plugin::get25DImage()
 {
@@ -470,7 +582,7 @@ void Plugin::get25DImage()
     getRobWorkStudio()->setState(rws_state);
     if (_framegrabber25D != NULL)
     {
-        for( int i = 0; i < _cameras25D.size(); i ++)
+        for(size_t i = 0; i < _cameras25D.size(); i ++)
         {
             // Get the image as a RW image
             rw::kinematics::Frame* cameraFrame25D = rws_wc->findFrame(_cameras25D[i]); // "Camera");
@@ -493,9 +605,226 @@ void Plugin::get25DImage()
             {
                 rw::math::Vector3D<float> p = p_tmp;
                 output << p(0) << " " << p(1) << " " << p(2) << "\n";
+                //std::cout << p(0) << " " << p(1) << " " << p(2) << "\n";
             }
             output.close();
 
+            pcl::PCLPointCloud2::Ptr object_in (new pcl::PCLPointCloud2 ());
+            pcl::PCLPointCloud2::Ptr scene_in (new pcl::PCLPointCloud2 ());
+            pcl::PCLPointCloud2::Ptr scene_cropped (new pcl::PCLPointCloud2 ());
+
+            pcl::io::loadPCDFile("wall_hr.pcd", *object_in);
+            pcl::io::loadPCDFile(_cameras25D[i] + ".pcd", *scene_in);
+
+
+            Eigen::Vector4f minPoint;
+            minPoint[0]=-2;  // define minimum point x
+            minPoint[1]=-2;  // define minimum point y
+            minPoint[2]=-2;  // define minimum point z
+            Eigen::Vector4f maxPoint;
+            maxPoint[0]=1;  // define max point x
+            maxPoint[1]=1;  // define max point y
+            maxPoint[2]=0;  // define max point z
+
+            pcl::CropBox<pcl::PCLPointCloud2> cropFilter;
+            cropFilter.setInputCloud (scene_in);
+            cropFilter.setMin(minPoint);
+            cropFilter.setMax(maxPoint);
+
+            cropFilter.filter (*scene_cropped);
+
+            //pcl::io::savePCDFile ("test_cropbox.pcd", *scene_out);
+
+            pcl::PCLPointCloud2::Ptr object_temp (new pcl::PCLPointCloud2 ());
+            pcl::PCLPointCloud2::Ptr scene_temp (new pcl::PCLPointCloud2 ());
+
+            pcl::VoxelGrid<pcl::PCLPointCloud2> voxobj;
+            voxobj.setInputCloud (object_in);
+            voxobj.setLeafSize (0.01f, 0.01f, 0.01f);
+            voxobj.filter (*object_temp);
+
+            pcl::VoxelGrid<pcl::PCLPointCloud2> voxscene;
+            voxscene.setInputCloud (scene_cropped);
+            voxscene.setLeafSize (0.01f, 0.01f, 0.01f);
+            voxscene.filter (*scene_temp);
+
+            pcl::PointCloud<pcl::PointNormal>::Ptr object_filtered(new pcl::PointCloud<pcl::PointNormal>);
+            pcl::PointCloud<pcl::PointNormal>::Ptr scene_filtered(new pcl::PointCloud<pcl::PointNormal>);
+
+            pcl::fromPCLPointCloud2( *object_temp, *object_filtered);
+            pcl::fromPCLPointCloud2( *scene_temp, *scene_filtered);
+
+            // Show
+            {
+                pcl::visualization::PCLVisualizer v("Before global alignment");
+                v.addPointCloud<pcl::PointNormal>(object_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(object_filtered, 0, 255, 0), "object");
+                v.addPointCloud<pcl::PointNormal>(scene_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(scene_filtered, 255, 0, 0),"scene");
+                v.spin();
+            }
+
+            // Compute surface normals
+            {
+                pcl::ScopeTime t("Surface normals");
+                pcl::NormalEstimation<pcl::PointNormal,pcl::PointNormal> ne;
+                ne.setKSearch(10);
+
+                ne.setInputCloud(object_filtered);
+                ne.compute(*object_filtered);
+
+                ne.setInputCloud(scene_filtered);
+                ne.compute(*scene_filtered);
+            }
+
+            // Compute shape features
+            pcl::PointCloud<pcl::Histogram<153>>::Ptr object_features(new pcl::PointCloud<pcl::Histogram<153>>);
+            pcl::PointCloud<pcl::Histogram<153>>::Ptr scene_features(new pcl::PointCloud<pcl::Histogram<153>>);
+            {
+                pcl::ScopeTime t("Shape features");
+
+                pcl::SpinImageEstimation<pcl::PointNormal,pcl::PointNormal,pcl::Histogram<153>> spin;
+                spin.setRadiusSearch(0.05);
+
+                spin.setInputCloud(object_filtered);
+                spin.setInputNormals(object_filtered);
+                spin.compute(*object_features);
+
+                spin.setInputCloud(scene_filtered);
+                spin.setInputNormals(scene_filtered);
+                spin.compute(*scene_features);
+            }
+
+            // Find feature matches
+            pcl::Correspondences corr(object_features->size());
+            {
+                pcl::ScopeTime t("Feature matches");
+                for(size_t i = 0; i < object_features->size(); ++i) {
+                    corr[i].index_query = i;
+                    nearest_feature(object_features->points[i], *scene_features, corr[i].index_match, corr[i].distance);
+                }
+            }
+
+            // Show matches
+            {
+                pcl::visualization::PCLVisualizer v("Matches");
+                v.addPointCloud<pcl::PointNormal>(object_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(object_filtered, 0, 255, 0), "object");
+                v.addPointCloud<pcl::PointNormal>(scene_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(scene_filtered, 255, 0, 0),"scene");
+                v.addCorrespondences<pcl::PointNormal>(object_filtered, scene_filtered, corr, 1);
+                v.spin();
+            }
+
+            // Create a k-d tree for scene
+            pcl::search::KdTree<pcl::PointNormal> tree;
+            tree.setInputCloud(scene_filtered);
+
+            // Set RANSAC parameters
+            const size_t iter = 5000;
+            const float thressq = 0.01 * 0.01;
+
+            // Start RANSAC
+            Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
+            pcl::PointCloud<pcl::PointNormal>::Ptr object_aligned(new pcl::PointCloud<pcl::PointNormal>);
+            float penalty = FLT_MAX;
+            {
+                pcl::ScopeTime t("RANSAC");
+                cout << "Starting RANSAC..." << endl;
+                pcl::common::UniformGenerator<int> gen(0, corr.size() - 1);
+                for(size_t i = 0; i < iter; ++i) {
+                    if((i + 1) % 100 == 0)
+                        cout << "\t" << i+1 << endl;
+                    // Sample 3 random correspondences
+                    std::vector<int> idxobj(3);
+                    std::vector<int> idxscn(3);
+                    for(int j = 0; j < 3; ++j) {
+                        const int idx = gen.run();
+                        idxobj[j] = corr[idx].index_query;
+                        idxscn[j] = corr[idx].index_match;
+                    }
+
+                    // Estimate transformation
+                    Eigen::Matrix4f T;
+                    pcl::registration::TransformationEstimationSVD<pcl::PointNormal,pcl::PointNormal> est;
+                    est.estimateRigidTransformation(*object_filtered, idxobj, *scene_filtered, idxscn, T);
+
+                    // Apply pose
+                    pcl::transformPointCloud(*object_filtered, *object_aligned, T);
+
+                    // Validate
+                    std::vector<std::vector<int> > idx;
+                    std::vector<std::vector<float> > distsq;
+                    tree.nearestKSearch(*object_aligned, std::vector<int>(), 1, idx, distsq);
+
+                    // Compute inliers and RMSE
+                    size_t inliers = 0;
+                    float rmse = 0;
+                    for(size_t j = 0; j < distsq.size(); ++j)
+                        if(distsq[j][0] <= thressq)
+                            ++inliers, rmse += distsq[j][0];
+                    rmse = sqrtf(rmse / inliers);
+
+                    // Evaluate a penalty function
+                    const float outlier_rate = 1.0f - float(inliers) / object_filtered->size();
+                    //const float penaltyi = rmse;
+                    const float penaltyi = outlier_rate;
+
+                    // Update result
+                    if(penaltyi < penalty) {
+                        cout << "\t--> Got a new model with " << inliers << " inliers!" << endl;
+                        penalty = penaltyi;
+                        pose = T;
+                    }
+                }
+
+                transformPointCloud(*object_filtered, *object_aligned, pose);
+
+                // Compute inliers and RMSE
+                std::vector<std::vector<int> > idx;
+                std::vector<std::vector<float> > distsq;
+                tree.nearestKSearch(*object_aligned, std::vector<int>(), 1, idx, distsq);
+                size_t inliers = 0;
+                float rmse = 0;
+                for(size_t i = 0; i < distsq.size(); ++i)
+                    if(distsq[i][0] <= thressq)
+                        ++inliers, rmse += distsq[i][0];
+                rmse = sqrtf(rmse / inliers);
+
+                // Print pose
+                cout << "Got the following pose:" << endl << pose << endl;
+                cout << "Inliers: " << inliers << "/" << object_filtered->size() << endl;
+                cout << "RMSE: " << rmse << endl;
+            } // End timing
+
+            // Show result
+            {
+                pcl::visualization::PCLVisualizer v("After global alignment");
+                v.addPointCloud<pcl::PointNormal>(object_aligned, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(object_aligned, 0, 255, 0), "object_aligned");
+                v.addPointCloud<pcl::PointNormal>(scene_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(scene_filtered, 255, 0, 0),"scene");
+                v.spin();
+            }
+
+
+        }
+    }
+}
+
+float Plugin::dist_sq(const pcl::Histogram<153>& query, const pcl::Histogram<153>& target) {
+    float result = 0.0;
+    for(int i = 0; i < pcl::Histogram<153>::descriptorSize(); ++i) {
+        const float diff = reinterpret_cast<const float*>(&query)[i] - reinterpret_cast<const float*>(&target)[i];
+        result += diff * diff;
+    }
+
+    return result;
+}
+
+void Plugin::nearest_feature(const pcl::Histogram<153>& query, const pcl::PointCloud<pcl::Histogram<153>>& target, int &idx, float &distsq) {
+
+    idx = 0;
+    distsq = dist_sq(query, target[0]);
+    for(size_t i = 1; i < target.size(); ++i) {
+        const float disti = dist_sq(query, target[i]);
+        if(disti < distsq) {
+            idx = i;
+            distsq = disti;
         }
     }
 }
