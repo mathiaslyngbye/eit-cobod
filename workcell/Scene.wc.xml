@@ -43,6 +43,13 @@
 	  </Drawable>
 	 </Frame>
 
+	<Frame name="Obstacle" refframe="Table" type="Fixed">
+	  <RPY> 0 0 0</RPY> <Pos> 0.07 0.09 0.40 </Pos>
+	  <Drawable name="Obstacle">
+	   <Polytope file="objects/wall.obj"/>
+	  </Drawable>
+	 </Frame>
+
     	<!-- Gripper -->
 
 	<Frame name="Gripper" refframe="UR5e_2018.Flange" type="Fixed">
@@ -61,7 +68,7 @@
     	<!-- Rebar -->
 
 
-	<Frame name="Rebar" refframe="Table" type="Fixed">
+	<Frame name="Rebar" refframe="Table" type="Movable">
 	   <RPY> 0 0 0</RPY> <Pos> 0.297 -0.099 0.126 </Pos>
 	  <Drawable name="RebarDrawable">
 	   <Polytope file="objects/302rod.obj"/>
