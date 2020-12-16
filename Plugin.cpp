@@ -206,9 +206,9 @@ void Plugin::connectRobot()
         std::cout << "Already connected..." << std::endl;
 }
 
-std::vector<double> Plugin::addMove(std::vector<double> position, double acceleration = 0.5, double velocity = 0.5)
+std::vector<double> Plugin::addMove(std::vector<double> position, double acceleration = 0.5, double velocity = 0.5, double blend = 0.2)
 {
-    std::vector<double> move = { acceleration, velocity };
+    std::vector<double> move = { acceleration, velocity, blend };
     std::vector<double> position_and_move;
     position_and_move.reserve(position.size() + move.size());
     position_and_move.insert( position_and_move.end(), position.begin(), position.end() );
@@ -270,7 +270,7 @@ void Plugin::RunRobotControl()
         std::vector<double> fromQ = ur_robot_receive->getActualQ();
         std::vector<double> toQ = invKin(fromQ,dynamicPlaceApproachL);
         rw::kinematics::State tmp_state = rws_state.clone();
-        createPathRRTConnect(fromQ, toQ, 0.05, 0.4, 0.4, path, tmp_state);
+        createPathRRTConnect(fromQ, toQ, 0.05, 0.4, 0.4, 0.02, path, tmp_state);
 
         std::cout << "Moving robot..." << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -392,7 +392,7 @@ void Plugin::attachObject()
      // Attach rebar to TCP
      rws_rebar->setTransform(
                  rw::math::Transform3D<>(
-                     rw::math::Vector3D<>(0, 0.05, 0),
+                     rw::math::Vector3D<>(0, 0, 0),
                      rw::math::RPY<>(0, 0, 0)),
              tmp_state
              );
@@ -408,7 +408,7 @@ void Plugin::resetObject()
      // Attach rebar to Table
      rws_rebar->setTransform(
                  rw::math::Transform3D<>(
-                     rw::math::Vector3D<>(0.26965, -0.05, 0.13),
+                     rw::math::Vector3D<>(0.297, -0.1, 0.126),
                      rw::math::RPY<>(0, 0, 0)),
              tmp_state
              );
@@ -540,7 +540,7 @@ void Plugin::printArray(std::vector<double> input)
     std::cout << input[input.size()-1] << " }" << std::endl;
 }
 
-void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> to, double epsilon, double velocity, double acceleration, std::vector<std::vector<double>> &path, rw::kinematics::State state)
+void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> to, double epsilon, double velocity, double acceleration, double blend, std::vector<std::vector<double>> &path, rw::kinematics::State state)
 {
     rw::pathplanning::PlannerConstraint constraint = rw::pathplanning::PlannerConstraint::make(collisionDetector.get(), rws_robot, state);
     rw::pathplanning::QSampler::Ptr sampler = rw::pathplanning::QSampler::makeConstrained(rw::pathplanning::QSampler::makeUniform(rws_robot), constraint.getQConstraintPtr());
@@ -553,10 +553,20 @@ void Plugin::createPathRRTConnect(std::vector<double> from, std::vector<double> 
     std::cout << "Found path of size " << qpath.size() << '!' << std::endl;
 
     path.clear();
+    int index = 0;
     for(const auto &q : qpath)
     {
         std::vector<double> q_copy = q.toStdVector();
-        path.push_back(addMove(q_copy, velocity, acceleration));
+        if(index < qpath.size()-1)
+        {
+            path.push_back(addMove(q_copy, velocity, acceleration, blend));
+        }
+        else
+        {
+            path.push_back(addMove(q_copy, velocity, acceleration, 0));
+            std::cout << "Doing last point..." << std::endl;
+        }
+        index++;
     }
 }
 

@@ -102,7 +102,7 @@ private slots:
     // Assistive
     double getConfDistance(std::vector<double>, std::vector<double>);
     void printArray(std::vector<double>);
-    std::vector<double> addMove(std::vector<double>, double, double);
+    std::vector<double> addMove(std::vector<double>, double, double, double);
 
     // Vision
     void get25DImage();
@@ -111,7 +111,7 @@ private slots:
     float dist_sq(const pcl::Histogram<153>& query, const pcl::Histogram<153>& target);
 
     // Planning
-    void createPathRRTConnect(std::vector<double>, std::vector<double>, double, double, double, std::vector<std::vector<double>>&, rw::kinematics::State);
+    void createPathRRTConnect(std::vector<double>, std::vector<double>, double, double, double, double, std::vector<std::vector<double>>&, rw::kinematics::State);
 
 private:
     // Qt buttons
