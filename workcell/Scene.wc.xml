@@ -5,7 +5,7 @@
 	<Frame name="Table" refframe="WORLD" type="Fixed">
 		<RPY>0 0 0</RPY> <Pos>0 0 -0.1</Pos>		
 		 <Drawable name="Table" refframe="Table">
-         <Polytope file="objects/table2/Sigmund_table.stl" />
+         <Polytope file="objects/table/Sigmund_table.obj" />
      </Drawable>
 	</Frame>
 
@@ -30,23 +30,35 @@
  	</Frame>
 
 	<Frame name="WallRight" refframe="Table" type="Fixed">
-	  <RPY> 0 0 0</RPY> <Pos> -0.05 0.275 0.10 </Pos>
+	  <RPY> 90 -180 -90</RPY> <Pos> -0.03 0.275 0.10 </Pos>
 	  <Drawable name="wallRight">
-	   <Polytope file="objects/wall.obj"/>
+	   <Polytope file="objects/Wall/wall.obj"/>
 	  </Drawable>
 	 </Frame>
 
 	<Frame name="WallLeft" refframe="Table" type="Fixed">
-	  <RPY> 0 0 0</RPY> <Pos> -0.05 0.5 0.10 </Pos>
+	  <RPY> 90 -180 -90</RPY> <Pos> -0.03 0.515 0.10 </Pos> 
 	  <Drawable name="wallLeft">
-	   <Polytope file="objects/wall.obj"/>
+	   <Polytope file="objects/Wall/wall.obj"/>
 	  </Drawable>
 	 </Frame>
 
+
+
+		<!-- 3 cm from edge (Horizontal) 12.5 cm from edge (vertical) 18 cm between walls  
+
+			275
+			180
+			450
+			-->
+		
+
+	<!-- Obstacle -->	
+
 	<Frame name="Obstacle" refframe="Table" type="Fixed">
-	  <RPY> 0 0 0</RPY> <Pos> 0.07 0.09 0.40 </Pos>
+	  <RPY> -90 0 0</RPY> <Pos> -0.05 0.225 0.10 </Pos>
 	  <Drawable name="Obstacle">
-	   <Polytope file="objects/wall.obj"/>
+	   <Polytope file="objects/Obstacle/box.obj"/>
 	  </Drawable>
 	 </Frame>
 
@@ -71,7 +83,7 @@
 	<Frame name="Rebar" refframe="Table" type="Movable">
 	   <RPY> 0 0 0</RPY> <Pos> 0.297 -0.099 0.126 </Pos>
 	  <Drawable name="RebarDrawable">
-	   <Polytope file="objects/302rod.obj"/>
+	   <Polytope file="objects/305rod.obj"/>
 	  </Drawable>
 	 </Frame>			
 
