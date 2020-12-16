@@ -79,28 +79,33 @@ private slots:
     // Functions
     void RunRobotMimic();
     void RunRobotControl();
+    void RunRobotControlRoute();
     void RunHomeRobot();
     void moveToForce(int mode);
     void moveToJ(std::vector<double>, double, double);
     void printLocation();
+    void generatePythonRoute(std::vector<std::vector<double>>&);
 
     // Start thread
     void startRobotMimic();
     void startRobotControl();
+    void startRobotControlRoute();
     void startHomeRobot();
 
     // Manage
-    std::vector<double> invKin(std::vector<double>);
+    std::vector<double> invKin(std::vector<double>, std::vector<double>);
     void attachObject();
     void resetObject();
     void connectRobot();
     void zeroSensor();
     void stopRobot();
+    void stopSync();
     void teachModeToggle();
 
     // Assistive
+    double getConfDistance(std::vector<double>, std::vector<double>);
     void printArray(std::vector<double>);
-    std::vector<double> addMove(std::vector<double>, double, double);
+    std::vector<double> addMove(std::vector<double>, double, double, double);
 
     // Vision
     void get25DImage();
@@ -109,11 +114,14 @@ private slots:
     float dist_sq(const pcl::Histogram<153>& query, const pcl::Histogram<153>& target);
 
     // Planning
-    void createPathRRTConnect(std::vector<double>, std::vector<double>, double, double, double, std::vector<std::vector<double>>&, rw::kinematics::State);
+    void createPathRRTConnect(std::vector<double>, std::vector<double>, double, double, double, double, std::vector<std::vector<double>>&, rw::kinematics::State);
 
 private:
     // Qt buttons
-    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach;
+    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach, *_btn_stop_sync, *_btn_control2;
+
+    // Base shift
+    double theta = 22.5 * (M_PI / 180);
 
     // RobWorkStudio interface
     rw::proximity::CollisionDetector::Ptr collisionDetector;
@@ -122,6 +130,7 @@ private:
     rw::models::SerialDevice::Ptr rws_robot;
     rw::kinematics::MovableFrame::Ptr rws_rebar;
     rw::kinematics::Frame::Ptr rws_robot_tcp;
+    rw::kinematics::Frame::Ptr rws_robot_base;
     rw::kinematics::Frame::Ptr rws_table;
 
 
@@ -136,12 +145,14 @@ private:
     std::vector<double> gripTCP =   { -0.15573, -0.52874,  0.17813,  1.77626, -2.57197,  0.04202 };
     std::vector<double> homeQ =     {  1.17810, -1.57080,  1.57080, -1.57080, -1.57080, -1.57080 };
     std::vector<double> homeTCP =   { -0.06489, -0.50552,  0.48784, -1.74588,  2.61176,  0.00493 };
+    std::vector<double> homeTCP_new =   { 0.6, -0.8,  0.2, 0,  0,  3.14};
 
     std::vector<double> pickApproachQ = { 0.773998, -1.3719, 1.55647, -1.7573, -1.56807, -1.97355 };
     std::vector<double> pickApproachL = { -0.313509, -0.493764, 0.407642, 1.74502, -2.61216, 0.000178952 };
     std::vector<double> pickQ =  { 0.762658, -0.972519, 1.91634, -2.51089, -1.5408, -1.98513 };
     std::vector<double> placeApproachQ =   { 1.74693, -1.08593, 1.66241, -2.14615, -1.56947, -0.999986 };
     std::vector<double> placeApproachL =   { 0.241712, -0.593151, 0.224805, -1.7459, 2.61178, 0.00491445 };
+    std::vector<double> placeApproachL_RW =   { 0.45, -0.4, 0.25, -1.5708, 0, -3.14159 };
     std::vector<double> placeQ =   { 1.81889, -1.15219, 1.91062, -2.26603, -1.53601, -0.886415 };
 
     std::vector<double> rebarL =  { 0.26965, -0.05, 0.13, 0, 0, 0 };
@@ -154,6 +165,7 @@ private:
     std::atomic_bool ur_robot_exists;
     std::atomic_bool ur_robot_stopped;
     std::atomic_bool ur_robot_teach_mode;
+    std::atomic_bool rws_robot_synced;
 
     // Threads
     std::thread control_thread;
