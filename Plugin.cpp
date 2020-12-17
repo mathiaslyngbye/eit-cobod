@@ -785,7 +785,7 @@ double Plugin::getConfDistance(std::vector<double> a, std::vector<double> b)
 }
 void Plugin::get25DImage()
 {
-    std::vector<double> q_vector = {rw::math::Pi/2,-rw::math::Pi/2,rw::math::Pi/2,-rw::math::Pi/2,-rw::math::Pi/2,0};
+    std::vector<double> q_vector = {2.004,-1.571,1.621,-1.850,-1.571,0.591};
     rw::math::Q new_q(q_vector);
     //rw::math::Q old_q = rws_robot->getQ(rws_state);
     rws_robot->setQ(new_q, rws_state);
@@ -823,7 +823,7 @@ void Plugin::get25DImage()
             pcl::PCLPointCloud2::Ptr scene_in (new pcl::PCLPointCloud2 ());
             pcl::PCLPointCloud2::Ptr scene_cropped (new pcl::PCLPointCloud2 ());
 
-            pcl::io::loadPCDFile("wall_hr.pcd", *object_in);
+            pcl::io::loadPCDFile("test.pcd", *object_in);
             pcl::io::loadPCDFile(_cameras25D[i] + ".pcd", *scene_in);
 
 
@@ -850,12 +850,12 @@ void Plugin::get25DImage()
 
             pcl::VoxelGrid<pcl::PCLPointCloud2> voxobj;
             voxobj.setInputCloud (object_in);
-            voxobj.setLeafSize (0.01f, 0.01f, 0.01f);
+            voxobj.setLeafSize (0.005f, 0.005f, 0.005f);
             voxobj.filter (*object_temp);
 
             pcl::VoxelGrid<pcl::PCLPointCloud2> voxscene;
             voxscene.setInputCloud (scene_cropped);
-            voxscene.setLeafSize (0.01f, 0.01f, 0.01f);
+            voxscene.setLeafSize (0.005f, 0.005f, 0.005f);
             voxscene.filter (*scene_temp);
 
             pcl::PointCloud<pcl::PointNormal>::Ptr object_filtered(new pcl::PointCloud<pcl::PointNormal>);
@@ -913,6 +913,7 @@ void Plugin::get25DImage()
                 }
             }
 
+            /*
             // Show matches
             {
                 pcl::visualization::PCLVisualizer v("Matches");
@@ -921,6 +922,7 @@ void Plugin::get25DImage()
                 v.addCorrespondences<pcl::PointNormal>(object_filtered, scene_filtered, corr, 1);
                 v.spin();
             }
+            */
 
             // Create a k-d tree for scene
             pcl::search::KdTree<pcl::PointNormal> tree;
@@ -1007,6 +1009,70 @@ void Plugin::get25DImage()
             {
                 pcl::visualization::PCLVisualizer v("After global alignment");
                 v.addPointCloud<pcl::PointNormal>(object_aligned, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(object_aligned, 0, 255, 0), "object_aligned");
+                v.addPointCloud<pcl::PointNormal>(scene_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(scene_filtered, 255, 0, 0),"scene");
+                v.spin();
+            }
+
+            //ICP
+            // Set ICP parameters
+            const size_t iter_ICP = 50;
+            const float thressq_ICP = 0.01 * 0.01;
+
+            // Start ICP
+            Eigen::Matrix4f pose_ICP = Eigen::Matrix4f::Identity();
+            pcl::PointCloud<pcl::PointNormal>::Ptr object_aligned_ICP(new pcl::PointCloud<pcl::PointNormal>(*object_aligned));
+            {
+                pcl::ScopeTime t("ICP");
+                cout << "Starting ICP..." << endl;
+                for(size_t i = 0; i < iter_ICP; ++i) {
+                    // 1) Find closest points
+                    std::vector<std::vector<int> > idx;
+                    std::vector<std::vector<float> > distsq;
+                    tree.nearestKSearch(*object_aligned_ICP, std::vector<int>(), 1, idx, distsq);
+
+                    // Threshold and create indices for object/scene and compute RMSE
+                    std::vector<int> idxobj;
+                    std::vector<int> idxscn;
+                    for(size_t j = 0; j < idx.size(); ++j) {
+                        if(distsq[j][0] <= thressq_ICP) {
+                            idxobj.push_back(j);
+                            idxscn.push_back(idx[j][0]);
+                        }
+                    }
+
+                    // 2) Estimate transformation
+                    Eigen::Matrix4f T_ICP;
+                    pcl::registration::TransformationEstimationSVD<pcl::PointNormal,pcl::PointNormal> est;
+                    est.estimateRigidTransformation(*object_aligned_ICP, idxobj, *scene_filtered, idxscn, T_ICP);
+
+                    // 3) Apply pose
+                    pcl::transformPointCloud(*object_aligned_ICP, *object_aligned_ICP, T_ICP);
+
+                    // 4) Update result
+                    pose_ICP = T_ICP * pose_ICP;
+                }
+
+                // Compute inliers and RMSE
+                std::vector<std::vector<int> > idx;
+                std::vector<std::vector<float> > distsq;
+                tree.nearestKSearch(*object_aligned_ICP, std::vector<int>(), 1, idx, distsq);
+                size_t inliers = 0;
+                float rmse = 0;
+                for(size_t i = 0; i < distsq.size(); ++i)
+                    if(distsq[i][0] <= thressq)
+                        ++inliers, rmse += distsq[i][0];
+                rmse = sqrtf(rmse / inliers);
+
+                // Print pose
+                cout << "Got the following pose:" << endl << pose << endl;
+                cout << "Inliers: " << inliers << "/" << object_aligned->size() << endl;
+                cout << "RMSE: " << rmse << endl;
+            } // End timing
+
+            // Show result
+            {
+                pcl::visualization::PCLVisualizer v("After local alignment");
+                v.addPointCloud<pcl::PointNormal>(object_aligned_ICP, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(object_aligned_ICP, 0, 255, 0), "object_aligned");
                 v.addPointCloud<pcl::PointNormal>(scene_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(scene_filtered, 255, 0, 0),"scene");
                 v.spin();
             }
