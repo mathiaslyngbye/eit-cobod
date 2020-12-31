@@ -50,6 +50,7 @@
 #include <utility>
 #include <chrono>
 #include <cmath>
+#include <tuple>
 
 // Extra defines for robot gripper
 #define OPEN false
@@ -110,7 +111,16 @@ private slots:
 
     // Vision
     void get25DImage();
-    //Helper functions
+    void globalAlignment();
+    void localAlignment();
+    void moveToWall();
+    // Assitive functions
+    void cropScene(pcl::PCLPointCloud2::Ptr inputpcl, pcl::PCLPointCloud2::Ptr & outputpcl, Eigen::Vector4f minPoint, Eigen::Vector4f maxPoint);
+    void voxelGrid(pcl::PCLPointCloud2::Ptr inputpcl, pcl::PointCloud<pcl::PointNormal>::Ptr & outputpcl, float leafSize=0.005);
+    void computeSurfaceNormals(pcl::PointCloud<pcl::PointNormal>::Ptr & cloud, int K=10);
+    void computeShapeFeatures(pcl::PointCloud<pcl::PointNormal>::Ptr & cloud, pcl::PointCloud<pcl::Histogram<153>>::Ptr features, float radius=0.05);
+    std::tuple<Eigen::Matrix4f, pcl::PointCloud<pcl::PointNormal>::Ptr, size_t, float> RANSAC(pcl::PointCloud<pcl::PointNormal>::Ptr & object, pcl::Correspondences corr, const size_t iter, const float threshsq);
+    std::tuple<Eigen::Matrix4f, pcl::PointCloud<pcl::PointNormal>::Ptr, size_t, float> ICP(pcl::PointCloud<pcl::PointNormal>::Ptr & object, const size_t iter, const float threshsq);
     void nearest_feature(const pcl::Histogram<153>& query, const pcl::PointCloud<pcl::Histogram<153>>& target, int &idx, float &distsq);
     float dist_sq(const pcl::Histogram<153>& query, const pcl::Histogram<153>& target);
 
@@ -119,7 +129,7 @@ private slots:
 
 private:
     // Qt buttons
-    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach, *_btn_stop_sync, *_btn_control2,*_btn_generate_route;
+    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach, *_btn_stop_sync, *_btn_control2,*_btn_generate_route, *_btn_glob_align, *_btn_local_align, *_btn_move_to_wall;
 
     // Base shift
     double theta = 22.5 * (M_PI / 180);
@@ -133,6 +143,7 @@ private:
     rw::kinematics::Frame::Ptr rws_robot_tcp;
     rw::kinematics::Frame::Ptr rws_robot_base;
     rw::kinematics::Frame::Ptr rws_table;
+    rw::kinematics::Frame::Ptr rws_camera;
 
     // UR interface
     std::string ur_robot_ip = "192.168.0.212";
@@ -159,7 +170,12 @@ private:
 
     //Vision
     rwlibs::simulation::GLFrameGrabber25D* _framegrabber25D;
-    std::vector<std::string> _cameras25D;
+    std::string camera_name = "Scanner25D";
+    pcl::PointCloud<pcl::PointNormal>::Ptr scene_filtered = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>);
+    pcl::PointCloud<pcl::PointNormal>::Ptr glob_object_align;
+    pcl::PointCloud<pcl::PointNormal>::Ptr local_object_align;
+    Eigen::Matrix4f glob_pose;
+    Eigen::Matrix4f local_pose;
 
     // Flags
     std::atomic_bool ur_robot_exists;
