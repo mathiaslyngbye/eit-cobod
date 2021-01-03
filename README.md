@@ -62,6 +62,12 @@ Install ur_rtde library.
 sudo apt install librtde librtde-dev
 ```
 
+### Point Cloud Library
+Install pcl.
+```bash
+sudo apt install libpcl-dev
+```
+
 ## Network configuration
 1. Read robot IP and DNS from tablet interface. 
 2. Configure the wired IPv4 connection:

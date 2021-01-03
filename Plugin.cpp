@@ -91,11 +91,6 @@ Plugin::Plugin():
     pLayout->addWidget(_btn_local_align, row++, 0);
     connect(_btn_local_align, SIGNAL(clicked()), this, SLOT(clickEvent()));
 
-    _btn_move_to_wall = new QPushButton("Move to wall");
-    pLayout->addWidget(_btn_move_to_wall, row++, 0);
-    connect(_btn_move_to_wall, SIGNAL(clicked()), this, SLOT(clickEvent()));
-
-
 
     pLayout->setRowStretch(row,1);
 
@@ -203,8 +198,6 @@ void Plugin::clickEvent()
         globalAlignment();
     else if(obj == _btn_local_align)
         localAlignment();
-    else if(obj == _btn_move_to_wall)
-        moveToWall();
 }
 
 void Plugin::stateChangedListener(const rw::kinematics::State& state)
@@ -802,6 +795,8 @@ double Plugin::getConfDistance(std::vector<double> a, std::vector<double> b)
 void Plugin::get25DImage()
 {
     std::vector<double> q_vector = {2.004,-1.571,1.621,-1.850,-1.571,0.591};
+    //std::vector<double> q_vector = {2.004,-1.571,1.621,-1.850,-2,0.591}; // This will fail with 1000 RANSAC iterations.
+
     rw::math::Q new_q(q_vector);
     rws_robot->setQ(new_q, rws_state);
     getRobWorkStudio()->setState(rws_state);
@@ -863,6 +858,10 @@ void Plugin::globalAlignment()
     voxelGrid(object_in, object_filtered);
     voxelGrid(scene_cropped, scene_filtered);
 
+
+    visualizePointClouds(scene_filtered, object_filtered, "Before global alignment");
+
+
     // Compute surface normals
     std::cout << "Computing surface normals" << std::endl;
     computeSurfaceNormals(object_filtered);
@@ -876,6 +875,7 @@ void Plugin::globalAlignment()
     computeShapeFeatures(scene_filtered, scene_features);
 
     // Find feature matches
+    std::cout << "Finding feature matches" << std::endl;
     pcl::Correspondences corr(object_features->size());
     {
         for(size_t i = 0; i < object_features->size(); ++i) {
@@ -894,16 +894,14 @@ void Plugin::globalAlignment()
     glob_object_align = object_aligned;
 
     // Set to true to display pointclouds
-    bool visualize = false;
+    bool visualize = true;
 
     if (visualize) {
-        pcl::visualization::PCLVisualizer v("After global alignment");
-        v.addPointCloud<pcl::PointNormal>(object_aligned, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(object_aligned, 0, 255, 0), "object_aligned");
-        v.addPointCloud<pcl::PointNormal>(scene_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(scene_filtered, 255, 0, 0),"scene");
-        v.spin();
+        visualizePointClouds(scene_filtered, object_aligned, "After global alignment");
     }
 
     std::cout << "Finished global alignment!" << std::endl;
+    std::cout << "Global transform is:\n" << glob_pose << std::endl;
 }
 
 void Plugin::cropScene(pcl::PCLPointCloud2::Ptr inputpcl, pcl::PCLPointCloud2::Ptr & outputpcl, Eigen::Vector4f minPoint, Eigen::Vector4f maxPoint)
@@ -1022,12 +1020,9 @@ std::tuple<Eigen::Matrix4f, pcl::PointCloud<pcl::PointNormal>::Ptr, size_t, floa
 
 void Plugin::localAlignment()
 {
-    std::cout << "This pose: " << glob_pose << std::endl;
-
     // ICP (Iterative Closest Point) parameters
     const size_t iter = 50;
     const float threshsq = 0.01 * 0.01;
-
 
     auto [pose, object_aligned, local_inliers, local_rmse] = ICP(glob_object_align, iter, threshsq);
 
@@ -1035,15 +1030,13 @@ void Plugin::localAlignment()
     local_object_align = object_aligned;
 
     //Set visualize to true to display pointclouds
-    bool visualize = false;
+    bool visualize = true;
 
     if (visualize) {
-        pcl::visualization::PCLVisualizer v("After local alignment");
-        v.addPointCloud<pcl::PointNormal>(object_aligned, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(object_aligned, 0, 255, 0), "object_aligned");
-        v.addPointCloud<pcl::PointNormal>(scene_filtered, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(scene_filtered, 255, 0, 0),"scene");
-        v.spin();
+        visualizePointClouds(scene_filtered, object_aligned, "After local alignment");
     }
     std::cout << "Finished local alignment!" << std::endl;
+    std::cout << "Local transform is:\n" << local_pose << std::endl;
 }
 
 std::tuple<Eigen::Matrix4f, pcl::PointCloud<pcl::PointNormal>::Ptr, size_t, float> Plugin::ICP(pcl::PointCloud<pcl::PointNormal>::Ptr & object, const size_t iter, const float threshsq)
@@ -1124,27 +1117,12 @@ void Plugin::nearest_feature(const pcl::Histogram<153>& query, const pcl::PointC
     }
 }
 
-void Plugin::moveToWall()
-{
-    Eigen::Matrix4f camera_to_wall = glob_pose * local_pose;
-    std::cout << camera_to_wall << std::endl;
-    //std::cout << total_pose.block(0,0,3,3) << std::endl;
-
-    //rw::math::Vector3D<>(0, 0, 0),
-    //rw::math::RPY<>(-theta, 0, 0));
-    rw::math::Transform3D<> trans(rw::math::Vector3D<>(camera_to_wall.block<3,1>(0,3)), rw::math::Rotation3D<>(camera_to_wall.block<3,3>(0,0)));//total_pose.block<3,1>(0,3), total_pose.block<3,3>(0,0));
-    std::cout << trans << std::endl;
-    rw::math::Transform3D<> world_to_tcp = rws_robot_tcp->wTf(rws_state);
-    rw::math::Transform3D<> world_to_camera = rws_camera->wTf(rws_state);
-    rw::math::Transform3D<> world_to_wall = trans * world_to_camera;
-    rw::math::RPY<> world_to_wall_RPY(world_to_wall.R());
-    rw::math::Vector3D<> world_to_wall_T(world_to_wall.P());
-    std::cout << world_to_wall << std::endl;
-    std::cout << world_to_wall_T << std::endl << world_to_wall_RPY << std::endl;
-    //ur_robot->moveL(tcp_to_wall,0.8,0.8);
-    //rws_robot_tcp->setTransform(tcp_to_wall);
-    //const rw::math::Transform3D<> homeT = rws_robot_base->wTf(tmp_state);
-    //rws_robot_base->wTf(tmp_state);
-    //getRobWorkStudio()->setState(rws_state);
+void Plugin::visualizePointClouds(pcl::PointCloud<pcl::PointNormal>::Ptr scene, pcl::PointCloud<pcl::PointNormal>::Ptr object, std::string title) {
+    pcl::visualization::PCLVisualizer v(title);
+    v.setBackgroundColor(1,1,1);
+    v.addPointCloud<pcl::PointNormal>(scene, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(scene, 0, 0, 255),"scene");
+    v.addPointCloud<pcl::PointNormal>(object, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(object, 255, 0, 0), "object");
+    v.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "scene");
+    v.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "object");
+    v.spin();
 }
-

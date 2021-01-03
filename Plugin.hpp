@@ -113,7 +113,6 @@ private slots:
     void get25DImage();
     void globalAlignment();
     void localAlignment();
-    void moveToWall();
     // Assitive functions
     void cropScene(pcl::PCLPointCloud2::Ptr inputpcl, pcl::PCLPointCloud2::Ptr & outputpcl, Eigen::Vector4f minPoint, Eigen::Vector4f maxPoint);
     void voxelGrid(pcl::PCLPointCloud2::Ptr inputpcl, pcl::PointCloud<pcl::PointNormal>::Ptr & outputpcl, float leafSize=0.005);
@@ -123,14 +122,14 @@ private slots:
     std::tuple<Eigen::Matrix4f, pcl::PointCloud<pcl::PointNormal>::Ptr, size_t, float> ICP(pcl::PointCloud<pcl::PointNormal>::Ptr & object, const size_t iter, const float threshsq);
     void nearest_feature(const pcl::Histogram<153>& query, const pcl::PointCloud<pcl::Histogram<153>>& target, int &idx, float &distsq);
     float dist_sq(const pcl::Histogram<153>& query, const pcl::Histogram<153>& target);
+    void visualizePointClouds(pcl::PointCloud<pcl::PointNormal>::Ptr scene, pcl::PointCloud<pcl::PointNormal>::Ptr object, std::string title);
 
     // Planning
     void createPathRRTConnect(std::vector<double>, std::vector<double>, double, double, double, double, std::vector<std::vector<double>>&, rw::kinematics::State);
 
 private:
     // Qt buttons
-    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach, *_btn_stop_sync, *_btn_control2,*_btn_generate_route, *_btn_glob_align, *_btn_local_align, *_btn_move_to_wall;
-
+    QPushButton *_btn_connect,*_btn_sync,*_btn_control,*_btn_stop,*_btn_teach, *_btn_print, *_btn_home, *_btn_zero, *_btn_image, *_btn_attach, *_btn_stop_sync, *_btn_control2,*_btn_generate_route, *_btn_glob_align, *_btn_local_align;
     // Base shift
     double theta = 22.5 * (M_PI / 180);
 
